@@ -1,4 +1,4 @@
-// Advanced Flipkart-Style E-Commerce Data Layer & State Store
+﻿// Advanced Flipkart-Style E-Commerce Data Layer & State Store
 // Features: Local-first persistence, real-time event simulation, Shiprocket-style courier tracking
 
 export interface User {
@@ -146,66 +146,18 @@ export interface NotificationItem {
 }
 
 // -------------------------------------------------------------
-// SEED DATA
+// SEED DATA (DISABLED — real-website mode)
+// No demo users / orders / notifications are seeded anymore.
+// Every account, order, and notification is created by a real
+// signup / purchase and persisted in MongoDB.
 // -------------------------------------------------------------
 
-const DEFAULT_USERS: User[] = [
-  {
-    id: "user-demo-customer",
-    name: "Aarav Sharma",
-    email: "aarav.sharma@example.com",
-    phone: "+91 98765 43210",
-    role: "customer",
-    isVerified: true,
-    avatar:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    createdAt: "2026-01-15T10:00:00Z",
-  },
-  {
-    id: "user-demo-admin",
-    name: "Priyadarshan (Admin)",
-    email: "admin@basketo.in",
-    phone: "+91 98111 22334",
-    role: "admin",
-    isVerified: true,
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
-    createdAt: "2025-11-01T10:00:00Z",
-  },
-];
+export const DEFAULT_USERS: User[] = [];
 
-const DEFAULT_ADDRESSES: Address[] = [
-  {
-    id: "addr-1",
-    userId: "user-demo-customer",
-    name: "Aarav Sharma",
-    phone: "+91 98765 43210",
-    houseNo: "Flat 402, Green Towers",
-    street: "12th Main, 4th Block, Koramangala",
-    landmark: "Near Sony World Signal",
-    city: "Bangalore",
-    state: "Karnataka",
-    pinCode: "560034",
-    type: "home",
-    isDefault: true,
-  },
-  {
-    id: "addr-2",
-    userId: "user-demo-customer",
-    name: "Aarav Sharma (Office)",
-    phone: "+91 98765 43210",
-    houseNo: "7th Floor, Tech Hub",
-    street: "Outer Ring Road, Bellandur",
-    landmark: "Ecospace IT Park",
-    city: "Bangalore",
-    state: "Karnataka",
-    pinCode: "560103",
-    type: "work",
-    isDefault: false,
-  },
-];
-
-const DEFAULT_COUPONS: Coupon[] = [
+export const DEFAULT_ADDRESSES: Address[] = [];
+export const DEFAULT_ORDERS: Order[] = [];
+export const DEFAULT_NOTIFICATIONS: NotificationItem[] = [];
+export const DEFAULT_COUPONS: Coupon[] = [
   {
     id: "coup-1",
     code: "FLIPKART50",
@@ -245,28 +197,6 @@ const DEFAULT_COUPONS: Coupon[] = [
   },
 ];
 
-const DEFAULT_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "notif-1",
-    userId: "user-demo-customer",
-    title: "Order Shipped! 🚀",
-    message: "Your order #OD-8921820 has been dispatched via Shiprocket Express.",
-    type: "shipment",
-    link: "/account?tab=orders",
-    read: false,
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-  },
-  {
-    id: "notif-2",
-    userId: "user-demo-customer",
-    title: "Super Coin Rewards Credited",
-    message: "You earned 40 SuperCoins on your recent fresh harvest order.",
-    type: "promo",
-    read: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
-
 // Helper to construct a Shiprocket tracking timeline
 export function createShipmentTimeline(
   orderId: string,
@@ -284,7 +214,7 @@ export function createShipmentTimeline(
   }> = [
     {
       status: "ORDER_PLACED",
-      location: "Online / Bangalore Web Server",
+      location: "Online / Bhubaneswar Web Server",
       desc: "Order verified and payment authorized successfully.",
       hoursAgo: 28,
     },
@@ -296,19 +226,19 @@ export function createShipmentTimeline(
     },
     {
       status: "PROCESSING",
-      location: "Koramangala Fulfillment Center, Bangalore",
+      location: "Khandagiri Fulfillment Center, Bhubaneswar",
       desc: "Items assigned to packing line and quality inspection passed.",
       hoursAgo: 24,
     },
     {
       status: "PACKED",
-      location: "Koramangala Fulfillment Center, Bangalore",
+      location: "Khandagiri Fulfillment Center, Bhubaneswar",
       desc: "Eco-friendly thermal insulated box sealed with security tamper tape.",
       hoursAgo: 18,
     },
     {
       status: "SHIPPED",
-      location: "Shiprocket Logistics Hub, Bangalore South",
+      location: "Shiprocket Logistics Hub, Bhubaneswar South",
       desc: "Handed over to Shiprocket Express courier partner.",
       hoursAgo: 14,
     },
@@ -320,19 +250,19 @@ export function createShipmentTimeline(
     },
     {
       status: "LOCAL_HUB",
-      location: "HSR Sector 2 Delivery Center",
+      location: "Khandagiri Sector 2 Delivery Center",
       desc: "Shipment arrived at your local neighborhood dispatch station.",
       hoursAgo: 3,
     },
     {
       status: "OUT_FOR_DELIVERY",
-      location: "Koramangala Delivery Route #4",
+      location: "Khandagiri Delivery Route #4",
       desc: "Delivery executive Suresh K (+91 98450 11223) is en route with your package.",
       hoursAgo: 0.5,
     },
     {
       status: "DELIVERED",
-      location: "Customer Doorstep, Bangalore 560034",
+      location: "Customer Doorstep, Bhubaneswar 751019",
       desc: "Package handed over to customer. OTP verified.",
       hoursAgo: 0,
     },
@@ -375,7 +305,7 @@ export function createShipmentTimeline(
     courierName: "Shiprocket Express (BlueDart Partner)",
     courierUrl: `https://shiprocket.co/tracking/${trackingId}`,
     awbNumber,
-    currentLocation: steps[currentLevel]?.location || "Bangalore Central Hub",
+    currentLocation: steps[currentLevel]?.location || "Bhubaneswar Central Hub",
     estimatedDeliveryDate: estDate.toLocaleDateString("en-IN", {
       weekday: "short",
       day: "numeric",
@@ -386,106 +316,72 @@ export function createShipmentTimeline(
   };
 }
 
-const DEFAULT_ORDERS: Order[] = [
-  {
-    id: "OD-90412849",
-    userId: "user-demo-customer",
-    customerName: "Aarav Sharma",
-    customerEmail: "aarav.sharma@example.com",
-    customerPhone: "+91 98765 43210",
-    items: [
-      {
-        id: "item-1",
-        productId: "1",
-        name: "Shimla Crisp Red Apples",
-        slug: "shimla-apples",
-        price: 249,
-        quantity: 2,
-        image:
-          "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&auto=format&fit=crop&q=80",
-        unit: "1 kg pack",
-        brand: "Farm Fresh",
-      },
-      {
-        id: "item-2",
-        productId: "2",
-        name: "Organic Farm Avocados",
-        slug: "organic-avocados",
-        price: 199,
-        quantity: 1,
-        image:
-          "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=400&auto=format&fit=crop&q=80",
-        unit: "2 pcs pack",
-        brand: "Freshly Harvest",
-      },
-    ],
-    subtotal: 697,
-    deliveryFee: 0,
-    discount: 50,
-    total: 647,
-    paymentMethod: "razorpay",
-    paymentStatus: "paid",
-    transactionId: "pay_Rzp91823901",
-    shippingAddress: DEFAULT_ADDRESSES[0],
-    status: "out_for_delivery",
-    shipment: createShipmentTimeline("OD-90412849", "out_for_delivery"),
-    createdAt: new Date(Date.now() - 3600000 * 26).toISOString(),
-    canCancel: false,
-    canReturn: false,
-  },
-  {
-    id: "OD-88204911",
-    userId: "user-demo-customer",
-    customerName: "Aarav Sharma",
-    customerEmail: "aarav.sharma@example.com",
-    customerPhone: "+91 98765 43210",
-    items: [
-      {
-        id: "item-3",
-        productId: "3",
-        name: "Cold-Pressed Virgin Coconut Oil",
-        slug: "cold-pressed-coconut-oil",
-        price: 499,
-        quantity: 1,
-        image:
-          "https://images.unsplash.com/photo-1526947425960-945c6e72858f?w=400&auto=format&fit=crop&q=80",
-        unit: "500 ml glass bottle",
-        brand: "Pure Roots",
-      },
-      {
-        id: "item-4",
-        productId: "4",
-        name: "Artisan Sourdough Country Loaf",
-        slug: "artisan-sourdough",
-        price: 160,
-        quantity: 1,
-        image:
-          "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=80",
-        unit: "400 g",
-        brand: "Bakehouse",
-      },
-    ],
-    subtotal: 659,
-    deliveryFee: 40,
-    discount: 0,
-    total: 699,
-    paymentMethod: "cod",
-    paymentStatus: "paid",
-    transactionId: "COD-VERIFIED-9821",
-    shippingAddress: DEFAULT_ADDRESSES[0],
-    status: "delivered",
-    deliveredAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    shipment: createShipmentTimeline("OD-88204911", "delivered"),
-    createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    canCancel: false,
-    canReturn: true,
-  },
-];
-
 // -------------------------------------------------------------
-// LOCAL STORAGE STORE MANAGEMENT
+// PERSISTENCE: MongoDB (server API) — client-safe fetch only.
+// The mongodb driver never loads in the browser; all DB traffic goes
+// through /api/mongo-sync so the client bundle stays clean.
 // -------------------------------------------------------------
 
+async function loadCollection<T>(name: string, fallback: T): Promise<T> {
+  try {
+    const id = StoreManager.instance?.currentUser?.id || "guest";
+    const res = await fetch(`/api/mongo-sync?userId=${encodeURIComponent(id)}`);
+    if (!res.ok) return fallback;
+    const json = await res.json();
+    return (json[name] ?? fallback) as T;
+  } catch (err) {
+    console.warn(`[mongo] load ${name} failed, using fallback`, err);
+    return fallback;
+  }
+}
+
+async function saveCollection(name: string, rows: unknown[]): Promise<void> {
+  const s = StoreManager.instance;
+  if (!s) return;
+  // Guests (pre-signup) persist under the shared "guest" bucket so account
+  // registration still reaches MongoDB before any user session exists.
+  const id = s.currentUser?.id || "guest";
+  try {
+    await fetch("/api/mongo-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: id,
+        data: {
+          users: s.registeredUsers,
+          coupons: s.coupons,
+          addresses: s.addresses,
+          orders: s.orders,
+          notifications: s.notifications,
+          wishlist: s.wishlist,
+          reviews: s.reviews,
+          [name]: rows,
+        },
+      }),
+    });
+  } catch (err) {
+    console.warn(`[mongo] save ${name} failed`, err);
+  }
+}
+
+/** Persist the whole store to MongoDB (debounced). */
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function schedulePersist(s: StoreManager) {
+  if (typeof window === "undefined") return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    saveCollection("users", s.registeredUsers);
+    saveCollection("coupons", s.coupons);
+    saveCollection("addresses", s.addresses);
+    saveCollection("orders", s.orders);
+    saveCollection("notifications", s.notifications);
+    saveCollection("wishlist", s.wishlist);
+    saveCollection("reviews", s.reviews);
+  }, 400);
+}
+
+// Legacy localStorage helpers (used only as a fallback when MongoDB is down).
 function getStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -516,6 +412,8 @@ export class StoreManager {
   notifications: NotificationItem[] = [];
   wishlist: string[] = []; // product IDs or slugs
   reviews: Review[] = [];
+  /** Every account ever registered. Used to block duplicate emails/phones. */
+  registeredUsers: User[] = [];
 
   private listeners: Set<() => void> = new Set();
 
@@ -530,14 +428,64 @@ export class StoreManager {
     return StoreManager.instance;
   }
 
+  /** Hydrate the in-memory store from MongoDB (via the server API). Safe to call repeatedly. */
+  async hydrateFromMongo(): Promise<void> {
+    const id = this.currentUser?.id;
+
+    // Shared collections (coupons, registered users) load fully.
+    this.coupons = await loadCollection("coupons", DEFAULT_COUPONS);
+    const mongoUsers = await loadCollection("users", DEFAULT_USERS);
+    // Merge: never let a Mongo hydration wipe accounts registered locally in
+    // this browser (e.g. a signup that happened moments ago).
+    const local = getStorage<User[]>("registered_users", []);
+    const merged = new Map<string, User>();
+    for (const u of [...mongoUsers, ...local]) {
+      if (u?.id && !merged.has(u.id)) merged.set(u.id, u);
+    }
+    this.registeredUsers = [...merged.values()];
+    setStorage("registered_users", this.registeredUsers);
+
+    if (!id) {
+      this.addresses = [];
+      this.orders = [];
+      this.notifications = [];
+      this.wishlist = [];
+      this.reviews = [];
+      return;
+    }
+
+    {
+      // Per-user collections are stored under a namespaced key inside a
+      // single document so they survive reloads and stay isolated.
+      this.addresses = await loadCollection("addresses", []);
+      this.orders = await loadCollection("orders", []);
+      this.notifications = await loadCollection("notifications", [
+        {
+          id: `ntf-welcome-${Date.now()}`,
+          userId: id,
+          title: "Welcome to Basketo!",
+          message: "Your account is ready. Start shopping fresh groceries delivered in 15 minutes.",
+          type: "auth",
+          read: false,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      this.wishlist = await loadCollection("wishlist", []);
+      this.reviews = await loadCollection("reviews", []);
+    }
+    this.notify();
+  }
+
   private init() {
-    this.currentUser = getStorage<User | null>("user", DEFAULT_USERS[0]);
-    this.addresses = getStorage<Address[]>("addresses", DEFAULT_ADDRESSES);
-    this.orders = getStorage<Order[]>("orders", DEFAULT_ORDERS);
+    // REAL WEBSITE MODE — never auto-login. A visitor is always a guest
+    // until they sign in / sign up themselves.
+    this.currentUser = null;
     this.coupons = getStorage<Coupon[]>("coupons", DEFAULT_COUPONS);
-    this.notifications = getStorage<NotificationItem[]>("notifications", DEFAULT_NOTIFICATIONS);
-    this.wishlist = getStorage<string[]>("wishlist", ["1", "4"]);
-    this.reviews = getStorage<Review[]>("reviews", []);
+    this.registeredUsers = getStorage<User[]>("registered_users", []);
+    // Kick off the real MongoDB hydration in the background.
+    if (typeof window !== "undefined") {
+      this.hydrateFromMongo();
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -549,17 +497,58 @@ export class StoreManager {
     this.listeners.forEach((fn) => fn());
   }
 
+  /** Persist the current in-memory state to MongoDB (debounced). */
+  private persist() {
+    schedulePersist(this);
+  }
+
   // --- AUTH METHODS ---
   setCurrentUser(user: User | null) {
     this.currentUser = user;
     setStorage("user", user);
+    if (user) {
+      // Track every distinct account so duplicate email/phone can be blocked later.
+      if (!this.registeredUsers.some((u) => u.id === user.id)) {
+        this.registeredUsers = [user, ...this.registeredUsers];
+        setStorage("registered_users", this.registeredUsers);
+      }
+    }
+    // Switch to the new account's MongoDB data (async, non-blocking).
+    this.hydrateFromMongo();
     this.notify();
   }
 
   switchUser(role: "customer" | "admin") {
-    const target = DEFAULT_USERS.find((u) => u.role === role) || DEFAULT_USERS[0];
-    this.setCurrentUser(target);
-    return target;
+    // Demo account switching disabled in real-website mode.
+    return this.currentUser;
+  }
+
+  /** Returns an existing user with the same email (case-insensitive) or phone, else null. */
+  findExistingUser(email: string, phone: string): User | null {
+    const e = (email || "").trim().toLowerCase();
+    const p = (phone || "").trim();
+    return (
+      this.registeredUsers.find(
+        (u) => u.email.toLowerCase() === e || (p && u.phone.trim() === p),
+      ) || null
+    );
+  }
+
+  /** Register a brand-new account. Returns the user, or null if credentials collide. */
+  registerUser(user: Omit<User, "id" | "createdAt"> & { id?: string; createdAt?: string }): User | null {
+    if (this.findExistingUser(user.email, user.phone)) return null;
+    const newUser: User = {
+      ...user,
+      id: user.id || `user-${Date.now()}`,
+      createdAt: user.createdAt || new Date().toISOString(),
+    };
+    this.registeredUsers = [newUser, ...this.registeredUsers];
+    // Persist IMMEDIATELY and synchronously to localStorage so the account
+    // survives even if the Mongo round-trip fails or a hydration races it.
+    setStorage("registered_users", this.registeredUsers);
+    // Then persist the full store to MongoDB (debounced, guest-bucket).
+    this.persist();
+    return newUser;
   }
 
   updateProfile(name: string, phone: string, avatar?: string) {
@@ -571,6 +560,7 @@ export class StoreManager {
       avatar: avatar || this.currentUser.avatar,
     };
     setStorage("user", this.currentUser);
+    this.persist();
     this.notify();
   }
 
@@ -585,7 +575,7 @@ export class StoreManager {
       this.addresses = this.addresses.map((a) => ({ ...a, isDefault: false }));
     }
     this.addresses = [newAddr, ...this.addresses];
-    setStorage("addresses", this.addresses);
+    this.persist();
     this.notify();
     return newAddr;
   }
@@ -600,7 +590,7 @@ export class StoreManager {
       }
       return a;
     });
-    setStorage("addresses", this.addresses);
+    this.persist();
     this.notify();
   }
 
@@ -609,7 +599,7 @@ export class StoreManager {
     if (this.addresses.length > 0 && !this.addresses.some((a) => a.isDefault)) {
       this.addresses[0].isDefault = true;
     }
-    setStorage("addresses", this.addresses);
+    this.persist();
     this.notify();
   }
 
@@ -618,7 +608,7 @@ export class StoreManager {
       ...a,
       isDefault: a.id === id,
     }));
-    setStorage("addresses", this.addresses);
+    this.persist();
     this.notify();
   }
 
@@ -630,7 +620,7 @@ export class StoreManager {
     } else {
       this.wishlist = [...this.wishlist, productId];
     }
-    setStorage("wishlist", this.wishlist);
+    this.persist();
     this.notify();
     return !exists;
   }
@@ -676,12 +666,12 @@ export class StoreManager {
     };
 
     this.orders = [newOrder, ...this.orders];
-    setStorage("orders", this.orders);
+    this.persist();
 
     // Trigger confirmation notification
     this.addNotification({
-      title: "Order Confirmed 🎉",
-      message: `Your order #${orderId} of ₹${Math.round(params.total)} has been placed successfully!`,
+      title: "Order Confirmed",
+      message: `Your order #${orderId} of \u20b9${Math.round(params.total)} has been placed successfully!`,
       type: "order",
       link: `/account?tab=orders&orderId=${orderId}`,
     });
@@ -708,7 +698,7 @@ export class StoreManager {
       completed: true,
     });
 
-    setStorage("orders", this.orders);
+    this.persist();
 
     this.addNotification({
       title: "Order Cancelled",
@@ -733,7 +723,7 @@ export class StoreManager {
     };
     order.canReturn = false;
 
-    setStorage("orders", this.orders);
+    this.persist();
 
     this.addNotification({
       title: "Return Request Submitted",
@@ -776,7 +766,7 @@ export class StoreManager {
       order.canCancel = false;
     }
 
-    setStorage("orders", this.orders);
+    this.persist();
 
     this.addNotification({
       title: `Order #${orderId} update: ${status.replace("_", " ").toUpperCase()}`,
@@ -796,11 +786,11 @@ export class StoreManager {
     order.status = "returned";
     order.paymentStatus = "refunded";
 
-    setStorage("orders", this.orders);
+    this.persist();
 
     this.addNotification({
-      title: "Return Approved! 💳",
-      message: `Return for order #${orderId} approved. ₹${order.total} has been refunded.`,
+      title: "Return Approved!",
+      message: `Return for order #${orderId} approved. Rs.${order.total} has been refunded.`,
       type: "order",
     });
 
@@ -817,19 +807,19 @@ export class StoreManager {
       createdAt: new Date().toISOString(),
     };
     this.notifications = [item, ...this.notifications];
-    setStorage("notifications", this.notifications);
+    this.persist();
     this.notify();
   }
 
   markAllNotificationsRead() {
     this.notifications = this.notifications.map((n) => ({ ...n, read: true }));
-    setStorage("notifications", this.notifications);
+    this.persist();
     this.notify();
   }
 
   markNotificationRead(id: string) {
     this.notifications = this.notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-    setStorage("notifications", this.notifications);
+    this.persist();
     this.notify();
   }
 
@@ -850,7 +840,7 @@ export class StoreManager {
       helpfulCount: 0,
     };
     this.reviews = [newRev, ...this.reviews];
-    setStorage("reviews", this.reviews);
+    this.persist();
     this.notify();
     return newRev;
   }

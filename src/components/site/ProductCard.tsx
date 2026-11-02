@@ -1,10 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { Plus, Star } from "lucide-react";
+import { Plus, Star, Heart } from "lucide-react";
 import { cart } from "@/lib/cart-store";
+import { store } from "@/lib/flipkart-store";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth-hook";
-import { useRef } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 
 export type Product = {
   id: string;
@@ -19,36 +18,114 @@ export type Product = {
   is_on_sale: boolean;
 };
 
+const cardStyle = {
+  border: `1px solid var(--bk-border)`,
+  background: `var(--bk-surface)`,
+  borderRadius: "0.75rem",
+  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+  transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
+};
+const cardHoverStyle = {
+  transform: "translateY(-4px)",
+  boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
+  borderColor: "var(--bk-primary)",
+};
+const imageStyle = { borderRadius: "0.5rem", background: "var(--bk-surface-alt)" };
+const badgeStyle = {
+  position: "absolute",
+  left: "0.5rem",
+  top: "0.5rem",
+  zIndex: 20,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "0.25rem",
+  borderRadius: "9999px",
+  background: "linear-gradient(to right, #f59e0b, #f43f5e)",
+  padding: "0.5rem 0.75rem",
+  fontSize: "0.75rem",
+  fontWeight: "900",
+  color: "#fff",
+  textTransform: "uppercase",
+  letterSpacing: "-0.025em",
+  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+};
+const wishlistStyle = {
+  position: "absolute",
+  right: "0.5rem",
+  top: "0.5rem",
+  zIndex: 20,
+  display: "grid",
+  height: "2rem",
+  width: "2rem",
+  placeItems: "center",
+  borderRadius: "9999px",
+  background: "rgba(255, 255, 255, 0.9)",
+  backdropFilter: "blur(4px)",
+  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+  transition: "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+};
+const contentStyle = { marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.25rem", paddingLeft: "0.5rem", paddingRight: "0.5rem" };
+const ratingStyle = { display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem" };
+const titleStyle = { fontWeight: "600", color: "var(--bk-ink)", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden", fontSize: "0.875rem" };
+const unitStyle = { fontSize: "0.6875rem", color: "var(--bk-muted)" };
+const priceRowStyle = { marginTop: "0.5rem", display: "flex", alignItems: "end", justifyContent: "between", paddingTop: "0.25rem" };
+const priceStyle = { fontFamily: "var(--font-display)", fontWeight: "800", color: "var(--bk-ink)", fontSize: "1.125rem" };
+const compareStyle = { fontSize: "0.75rem", color: "var(--bk-muted)", textDecoration: "line-through", marginLeft: "0.25rem" };
+const discountStyle = { fontSize: "0.75rem", fontWeight: "700", color: "var(--bk-success)" };
+const actionsStyle = { marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" };
+const buyBtnStyle = {
+  flex: 1,
+  borderRadius: "0.5rem",
+  background: "var(--bk-primary)",
+  padding: "0.375rem 0.75rem",
+  fontSize: "0.6875rem",
+  fontWeight: "700",
+  color: "#fff",
+  transition: "background-color 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+};
+const addBtnStyle = {
+  height: "2rem",
+  width: "2rem",
+  display: "grid",
+  placeItems: "center",
+  borderRadius: "9999px",
+  background: "linear-gradient(to right, var(--bk-primary), var(--bk-primary-hover))",
+  color: "#fff",
+  boxShadow: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+  transition: "all 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+};
+const stockStyle = { marginTop: "0.25rem", fontSize: "0.625rem", fontWeight: "600", textTransform: "uppercase", letterSpacing: "-0.025em" };
+
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
-  const { user } = useAuth();
+  const user = useSyncExternalStore(
+    (cb) => store.subscribe(cb),
+    () => store.currentUser,
+    () => store.currentUser,
+  );
   const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  const springConfig = { damping: 20, stiffness: 260, mass: 0.4 };
-  const rotateX = useSpring(useTransform(mouseY, [-0.5, 0.5], [8, -8]), springConfig);
-  const rotateY = useSpring(useTransform(mouseX, [-0.5, 0.5], [-8, 8]), springConfig);
-  const glareOpacity = useSpring(useTransform(mouseY, [-0.5, 0.5], [0.15, 0]), springConfig);
 
   const img = product.images[0] ?? "";
   const off = product.compare_at_price
     ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
     : 0;
 
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width - 0.5;
-    const y = (e.clientY - rect.top) / rect.height - 0.5;
-    mouseX.set(x);
-    mouseY.set(y);
-  }
+  const [isWishlisted] = useState(() => store.isWishlisted(product.id));
 
-  function handleMouseLeave() {
-    mouseX.set(0);
-    mouseY.set(0);
+  function handleToggleWishlist(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      navigate({
+        to: "/auth",
+        search: { redirect_to: `/product/${product.slug}` },
+      });
+      toast.info("Please sign in to save items");
+      return;
+    }
+    const added = store.toggleWishlist(product.id);
+    if (added) toast.success(`Saved ${product.name} to wishlist`);
+    else toast.info(`Removed from wishlist`);
   }
 
   function handleAddToCart() {
@@ -57,7 +134,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
         to: "/auth",
         search: { redirect_to: `/product/${product.slug}` },
       });
-      toast.info("Please sign in to add items to your cart");
+      toast.info("Please sign in to add items to cart");
       return;
     }
     cart.add({
@@ -71,124 +148,113 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
     toast.success(`${product.name} added to cart`);
   }
 
-  return (
-    <motion.div
-      ref={cardRef}
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ delay: Math.min(index, 8) * 0.04 }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        rotateX,
-        rotateY,
-        transformStyle: "preserve-3d",
-      }}
-      whileHover={{ scale: 1.02 }}
-      className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/80 bg-card p-3 shadow-sm transition-shadow duration-300 hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-500/30"
-    >
-      {/* 3D Dynamic Glare Effect */}
-      <motion.div
-        style={{ opacity: glareOpacity }}
-        className="pointer-events-none absolute inset-0 z-20 rounded-3xl bg-gradient-to-tr from-transparent via-white/40 to-transparent transition-opacity"
-      />
+  function handleQuickBuy() {
+    if (!user) {
+      navigate({
+        to: "/auth",
+        search: { redirect_to: `/product/${product.slug}` },
+      });
+      toast.info("Please sign in to continue");
+      return;
+    }
+    cart.add({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      price: Number(product.price),
+      image: img,
+      unit: product.unit,
+    });
+    navigate({ to: "/cart" });
+  }
 
-      <div
-        className="relative block aspect-square overflow-hidden rounded-2xl bg-muted/60"
-        style={{ transform: "translateZ(25px)", transformStyle: "preserve-3d" }}
-      >
+  const stockLabel = product.stock > 10 ? "In Stock" : product.stock > 0 ? `Only ${product.stock} left` : "Out of Stock";
+  const stockColor = product.stock > 10 ? "var(--bk-success)" : product.stock > 0 ? "var(--bk-warning)" : "var(--bk-error)";
+
+  return (
+    <article
+      ref={cardRef}
+      style={cardStyle}
+      className="relative flex flex-col overflow-hidden transition-all duration-300 hover:border-bk-primary hover:shadow-bk-xl"
+      onMouseEnter={(e) => { Object.assign(cardRef.current!.style, cardHoverStyle); }}
+      onMouseLeave={(e) => { Object.assign(cardRef.current!.style, cardStyle); }}
+    >
+      <div style={imageStyle} className="relative block aspect-square overflow-hidden">
+        {off > 0 && (
+          <span style={badgeStyle}>-{off}%</span>
+        )}
+
         <Link to="/product/$slug" params={{ slug: product.slug }} className="block h-full w-full">
-          {off > 0 && (
-            <span className="absolute left-2.5 top-2.5 z-10 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-2.5 py-0.5 text-[11px] font-extrabold text-white shadow-md">
-              -{off}%
-            </span>
-          )}
           <img
             src={img}
             alt={product.name}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+            className="h-full w-full object-cover hover:scale-105 duration-500"
           />
         </Link>
 
-        {/* Wishlist Heart Button */}
         <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const added = store.toggleWishlist(product.id);
-            if (added) toast.success(`Saved ${product.name} to wishlist ❤️`);
-            else toast.info(`Removed ${product.name} from wishlist`);
-          }}
-          className="absolute right-2.5 top-2.5 z-20 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-rose-500 shadow-sm backdrop-blur-xs transition hover:scale-115 active:scale-95"
-          aria-label="Toggle Wishlist"
+          onClick={handleToggleWishlist}
+          style={wishlistStyle}
+          className="hover:scale-110 active:scale-95"
+          aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
         >
           <Heart
-            className={`h-4 w-4 ${
-              store.isWishlisted(product.id) ? "fill-rose-500 text-rose-500" : "text-slate-600"
-            }`}
+            className={`h-5 w-5 ${isWishlisted ? "fill-rose-500 text-rose-500" : "text-slate-600"}`}
           />
         </button>
       </div>
 
-      <div
-        className="mt-3 flex flex-1 flex-col gap-1 px-1"
-        style={{ transform: "translateZ(15px)" }}
-      >
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div style={contentStyle}>
+        <div style={ratingStyle} className="text-xs">
           <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-          <span className="font-semibold text-foreground">{product.rating}</span>
-          <span className="text-[11px] opacity-70">★</span>
+          <span className="font-semibold text-bk-ink">{product.rating}</span>
         </div>
         <Link
           to="/product/$slug"
           params={{ slug: product.slug }}
-          className="line-clamp-1 font-semibold text-foreground transition-colors group-hover:text-primary"
+          style={titleStyle}
+          className="hover:text-bk-primary transition-colors duration-200"
         >
           {product.name}
         </Link>
-        <div className="text-xs text-muted-foreground">{product.unit}</div>
-        <div className="mt-2 flex items-end justify-between pt-1">
+        <div style={unitStyle} className="text-bk-muted">{product.unit}</div>
+
+        <div style={priceRowStyle}>
           <div>
-            <div className="font-display text-lg font-extrabold text-foreground">
+            <div style={priceStyle}>
               ₹{Math.round(product.price).toLocaleString("en-IN")}
             </div>
             {product.compare_at_price && (
-              <div className="text-xs text-muted-foreground line-through">
+              <div style={compareStyle}>
                 ₹{Math.round(Number(product.compare_at_price)).toLocaleString("en-IN")}
               </div>
             )}
+            {off > 0 && <span style={discountStyle}>{off}% off</span>}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div style={actionsStyle} className="flex items-center gap-1.5">
             <button
-              onClick={() => {
-                cart.add({
-                  id: product.id,
-                  name: product.name,
-                  slug: product.slug,
-                  price: Number(product.price),
-                  image: img,
-                  unit: product.unit,
-                });
-                navigate({ to: "/cart" });
-              }}
-              className="rounded-full border border-emerald-500/30 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
+              onClick={handleQuickBuy}
+              style={buyBtnStyle}
+              className="hover:opacity-95"
+              disabled={product.stock === 0}
             >
               Buy
             </button>
-
             <button
               onClick={handleAddToCart}
-              className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/30 transition hover:scale-115 hover:shadow-lg active:scale-95"
+              style={addBtnStyle}
+              className="hover:scale-105 active:scale-95"
               aria-label="Add to cart"
             >
               <Plus className="h-4 w-4" />
             </button>
           </div>
         </div>
+
+        <div style={{ ...stockStyle, color: stockColor }}>{stockLabel}</div>
       </div>
-    </motion.div>
+    </article>
   );
 }

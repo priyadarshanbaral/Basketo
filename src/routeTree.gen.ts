@@ -8,263 +8,296 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from "./routes/__root";
-import { Route as IndexRouteImport } from "./routes/index";
-import { Route as AdminRouteImport } from "./routes/admin";
-import { Route as AuthRouteImport } from "./routes/auth";
-import { Route as CartRouteImport } from "./routes/cart";
-import { Route as OrdersRouteImport } from "./routes/orders";
-import { Route as ShopRouteImport } from "./routes/shop";
-import { Route as ApiChatRouteImport } from "./routes/api/chat";
-import { Route as AuthCallbackRouteImport } from "./routes/auth.callback";
-import { Route as PSlugRouteImport } from "./routes/p.$slug";
-import { Route as ProductSlugRouteImport } from "./routes/product.$slug";
+import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CartRouteImport } from './routes/cart'
+import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as ShopRouteImport } from './routes/shop'
+import { Route as ApiAdminAnalyticsRouteImport } from './routes/api/admin-analytics'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiMongoSyncRouteImport } from './routes/api/mongo-sync'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 
 const IndexRoute = IndexRouteImport.update({
-  id: "/",
-  path: "/",
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
-  id: "/admin",
-  path: "/admin",
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const AuthRoute = AuthRouteImport.update({
-  id: "/auth",
-  path: "/auth",
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const CartRoute = CartRouteImport.update({
-  id: "/cart",
-  path: "/cart",
+  id: '/cart',
+  path: '/cart',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const OrdersRoute = OrdersRouteImport.update({
-  id: "/orders",
-  path: "/orders",
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ShopRoute = ShopRouteImport.update({
-  id: "/shop",
-  path: "/shop",
+  id: '/shop',
+  path: '/shop',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
+const ApiAdminAnalyticsRoute = ApiAdminAnalyticsRouteImport.update({
+  id: '/api/admin-analytics',
+  path: '/api/admin-analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
-  id: "/api/chat",
-  path: "/api/chat",
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
-} as any);
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: "/callback",
-  path: "/callback",
-  getParentRoute: () => AuthRoute,
-} as any);
+} as any)
+const ApiMongoSyncRoute = ApiMongoSyncRouteImport.update({
+  id: '/api/mongo-sync',
+  path: '/api/mongo-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PSlugRoute = PSlugRouteImport.update({
-  id: "/p/$slug",
-  path: "/p/$slug",
+  id: '/p/$slug',
+  path: '/p/$slug',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 const ProductSlugRoute = ProductSlugRouteImport.update({
-  id: "/product/$slug",
-  path: "/product/$slug",
+  id: '/product/$slug',
+  path: '/product/$slug',
   getParentRoute: () => rootRouteImport,
-} as any);
+} as any)
 
 export interface FileRoutesByFullPath {
-  "/": typeof IndexRoute;
-  "/admin": typeof AdminRoute;
-  "/auth": typeof AuthRouteWithChildren;
-  "/cart": typeof CartRoute;
-  "/orders": typeof OrdersRoute;
-  "/shop": typeof ShopRoute;
-  "/api/chat": typeof ApiChatRoute;
-  "/auth/callback": typeof AuthCallbackRoute;
-  "/p/$slug": typeof PSlugRoute;
-  "/product/$slug": typeof ProductSlugRoute;
+  '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
+  '/cart': typeof CartRoute
+  '/orders': typeof OrdersRoute
+  '/shop': typeof ShopRoute
+  '/api/admin-analytics': typeof ApiAdminAnalyticsRoute
+  '/api/chat': typeof ApiChatRoute
+  '/api/mongo-sync': typeof ApiMongoSyncRoute
+  '/p/$slug': typeof PSlugRoute
+  '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRoutesByTo {
-  "/": typeof IndexRoute;
-  "/admin": typeof AdminRoute;
-  "/auth": typeof AuthRouteWithChildren;
-  "/cart": typeof CartRoute;
-  "/orders": typeof OrdersRoute;
-  "/shop": typeof ShopRoute;
-  "/api/chat": typeof ApiChatRoute;
-  "/auth/callback": typeof AuthCallbackRoute;
-  "/p/$slug": typeof PSlugRoute;
-  "/product/$slug": typeof ProductSlugRoute;
+  '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
+  '/cart': typeof CartRoute
+  '/orders': typeof OrdersRoute
+  '/shop': typeof ShopRoute
+  '/api/admin-analytics': typeof ApiAdminAnalyticsRoute
+  '/api/chat': typeof ApiChatRoute
+  '/api/mongo-sync': typeof ApiMongoSyncRoute
+  '/p/$slug': typeof PSlugRoute
+  '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport;
-  "/": typeof IndexRoute;
-  "/admin": typeof AdminRoute;
-  "/auth": typeof AuthRouteWithChildren;
-  "/cart": typeof CartRoute;
-  "/orders": typeof OrdersRoute;
-  "/shop": typeof ShopRoute;
-  "/api/chat": typeof ApiChatRoute;
-  "/auth/callback": typeof AuthCallbackRoute;
-  "/p/$slug": typeof PSlugRoute;
-  "/product/$slug": typeof ProductSlugRoute;
+  __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
+  '/cart': typeof CartRoute
+  '/orders': typeof OrdersRoute
+  '/shop': typeof ShopRoute
+  '/api/admin-analytics': typeof ApiAdminAnalyticsRoute
+  '/api/chat': typeof ApiChatRoute
+  '/api/mongo-sync': typeof ApiMongoSyncRoute
+  '/p/$slug': typeof PSlugRoute
+  '/product/$slug': typeof ProductSlugRoute
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath;
+  fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | "/"
-    | "/admin"
-    | "/auth"
-    | "/cart"
-    | "/orders"
-    | "/shop"
-    | "/api/chat"
-    | "/auth/callback"
-    | "/p/$slug"
-    | "/product/$slug";
-  fileRoutesByTo: FileRoutesByTo;
+    | '/'
+    | '/account'
+    | '/admin'
+    | '/auth'
+    | '/cart'
+    | '/orders'
+    | '/shop'
+    | '/api/admin-analytics'
+    | '/api/chat'
+    | '/api/mongo-sync'
+    | '/p/$slug'
+    | '/product/$slug'
+  fileRoutesByTo: FileRoutesByTo
   to:
-    | "/"
-    | "/admin"
-    | "/auth"
-    | "/cart"
-    | "/orders"
-    | "/shop"
-    | "/api/chat"
-    | "/auth/callback"
-    | "/p/$slug"
-    | "/product/$slug";
+    | '/'
+    | '/account'
+    | '/admin'
+    | '/auth'
+    | '/cart'
+    | '/orders'
+    | '/shop'
+    | '/api/admin-analytics'
+    | '/api/chat'
+    | '/api/mongo-sync'
+    | '/p/$slug'
+    | '/product/$slug'
   id:
-    | "__root__"
-    | "/"
-    | "/admin"
-    | "/auth"
-    | "/cart"
-    | "/orders"
-    | "/shop"
-    | "/api/chat"
-    | "/auth/callback"
-    | "/p/$slug"
-    | "/product/$slug";
-  fileRoutesById: FileRoutesById;
+    | '__root__'
+    | '/'
+    | '/account'
+    | '/admin'
+    | '/auth'
+    | '/cart'
+    | '/orders'
+    | '/shop'
+    | '/api/admin-analytics'
+    | '/api/chat'
+    | '/api/mongo-sync'
+    | '/p/$slug'
+    | '/product/$slug'
+  fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute;
-  AdminRoute: typeof AdminRoute;
-  AuthRoute: typeof AuthRouteWithChildren;
-  CartRoute: typeof CartRoute;
-  OrdersRoute: typeof OrdersRoute;
-  ShopRoute: typeof ShopRoute;
-  ApiChatRoute: typeof ApiChatRoute;
-  PSlugRoute: typeof PSlugRoute;
-  ProductSlugRoute: typeof ProductSlugRoute;
+  IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
+  AdminRoute: typeof AdminRoute
+  AuthRoute: typeof AuthRoute
+  CartRoute: typeof CartRoute
+  OrdersRoute: typeof OrdersRoute
+  ShopRoute: typeof ShopRoute
+  ApiAdminAnalyticsRoute: typeof ApiAdminAnalyticsRoute
+  ApiChatRoute: typeof ApiChatRoute
+  ApiMongoSyncRoute: typeof ApiMongoSyncRoute
+  PSlugRoute: typeof PSlugRoute
+  ProductSlugRoute: typeof ProductSlugRoute
 }
 
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    "/": {
-      id: "/";
-      path: "/";
-      fullPath: "/";
-      preLoaderRoute: typeof IndexRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/admin": {
-      id: "/admin";
-      path: "/admin";
-      fullPath: "/admin";
-      preLoaderRoute: typeof AdminRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/auth": {
-      id: "/auth";
-      path: "/auth";
-      fullPath: "/auth";
-      preLoaderRoute: typeof AuthRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/cart": {
-      id: "/cart";
-      path: "/cart";
-      fullPath: "/cart";
-      preLoaderRoute: typeof CartRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/orders": {
-      id: "/orders";
-      path: "/orders";
-      fullPath: "/orders";
-      preLoaderRoute: typeof OrdersRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/shop": {
-      id: "/shop";
-      path: "/shop";
-      fullPath: "/shop";
-      preLoaderRoute: typeof ShopRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/api/chat": {
-      id: "/api/chat";
-      path: "/api/chat";
-      fullPath: "/api/chat";
-      preLoaderRoute: typeof ApiChatRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/auth/callback": {
-      id: "/auth/callback";
-      path: "/callback";
-      fullPath: "/auth/callback";
-      preLoaderRoute: typeof AuthCallbackRouteImport;
-      parentRoute: typeof AuthRoute;
-    };
-    "/p/$slug": {
-      id: "/p/$slug";
-      path: "/p/$slug";
-      fullPath: "/p/$slug";
-      preLoaderRoute: typeof PSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/product/$slug": {
-      id: "/product/$slug";
-      path: "/product/$slug";
-      fullPath: "/product/$slug";
-      preLoaderRoute: typeof ProductSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cart': {
+      id: '/cart'
+      path: '/cart'
+      fullPath: '/cart'
+      preLoaderRoute: typeof CartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shop': {
+      id: '/shop'
+      path: '/shop'
+      fullPath: '/shop'
+      preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin-analytics': {
+      id: '/api/admin-analytics'
+      path: '/api/admin-analytics'
+      fullPath: '/api/admin-analytics'
+      preLoaderRoute: typeof ApiAdminAnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/mongo-sync': {
+      id: '/api/mongo-sync'
+      path: '/api/mongo-sync'
+      fullPath: '/api/mongo-sync'
+      preLoaderRoute: typeof ApiMongoSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product/$slug': {
+      id: '/product/$slug'
+      path: '/product/$slug'
+      fullPath: '/product/$slug'
+      preLoaderRoute: typeof ProductSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
-interface AuthRouteChildren {
-  AuthCallbackRoute: typeof AuthCallbackRoute;
-}
-
-const AuthRouteChildren: AuthRouteChildren = {
-  AuthCallbackRoute: AuthCallbackRoute,
-};
-
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren);
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
-  AuthRoute: AuthRouteWithChildren,
+  AuthRoute: AuthRoute,
   CartRoute: CartRoute,
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
+  ApiAdminAnalyticsRoute: ApiAdminAnalyticsRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiMongoSyncRoute: ApiMongoSyncRoute,
   PSlugRoute: PSlugRoute,
   ProductSlugRoute: ProductSlugRoute,
-};
+}
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>();
+  ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from "./router.tsx";
-import type { startInstance } from "./start.ts";
-declare module "@tanstack/react-start" {
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
   interface Register {
-    ssr: true;
-    router: Awaited<ReturnType<typeof getRouter>>;
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>;
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
   }
 }

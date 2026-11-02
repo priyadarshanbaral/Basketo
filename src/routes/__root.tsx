@@ -20,7 +20,7 @@ import "@fontsource/outfit/600.css";
 import "@fontsource/outfit/700.css";
 import "@fontsource/outfit/800.css";
 
-import appCss from "../styles.css?url";
+import appCss from "../index.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {

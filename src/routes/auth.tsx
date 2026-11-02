@@ -22,7 +22,49 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "signin" | "signup" | "otp_verify" | "forgot_password" | "reset_password";
+type AuthMode = "signin" | "signup" | "otp_verify" | "forgot_password" | "reset_password" | "admin_signup" | "admin_verify";
+
+// ── FIXED ADMIN UNIQUE ID ─────────────────────────────
+// ADMIN UNIQUE ID SYSTEM
+// ── One fixed Admin ID exists in the entire system. It can be used to
+// create a MAXIMUM of 3 admin accounts. Once 3 admins exist, the ID is
+// permanently exhausted — no 4th admin account can ever be created.
+const FIXED_ADMIN_ID = "BASKETO-ADMIN-2026-X9K4";
+const MAX_ADMIN_ACCOUNTS = 3;
+
+// Permanent registry of admin seats consumed by the fixed ID.
+function adminSeatsUsed(): number {
+  try {
+    const ids: string[] = JSON.parse(localStorage.getItem("basketo_admin_seats") || "[]");
+    return ids.length;
+  } catch {
+    return 0;
+  }
+}
+
+function claimAdminSeat(userId: string): boolean {
+  try {
+    const ids: string[] = JSON.parse(localStorage.getItem("basketo_admin_seats") || "[]");
+    if (ids.length >= MAX_ADMIN_ACCOUNTS || ids.includes(userId)) return false;
+    ids.push(userId);
+    localStorage.setItem("basketo_admin_seats", JSON.stringify(ids));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Lightweight local account ledger (email/phone uniqueness enforced).
+function localAccounts(): Array<{ user: any; password: string }> {
+  try {
+    return JSON.parse(localStorage.getItem("basketo_accounts") || "[]");
+  } catch {
+    return [];
+  }
+}
+function saveAccounts(list: Array<{ user: any; password: string }>) {
+  localStorage.setItem("basketo_accounts", JSON.stringify(list));
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -35,6 +77,9 @@ function AuthPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminIdInput, setAdminIdInput] = useState("");
+  const [adminVerified, setAdminVerified] = useState(false);
+  const [pendingAdmin, setPendingAdmin] = useState<any>(null);
 
   // OTP state
   const [generatedOtp, setGeneratedOtp] = useState<string>("849201");
@@ -78,8 +123,111 @@ function AuthPage() {
       toast.error("Password must be at least 6 characters");
       return;
     }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    if (phone.replace(/\D/g, "").length < 10) {
+      toast.error("Please enter a valid 10-digit mobile number");
+      return;
+    }
 
-    startOtpFlow(email);
+    setLoading(true);
+    try {
+      // Block duplicate email OR phone — each account needs a unique identity.
+      const existing = store.findExistingUser(email, phone);
+      if (existing) {
+        if (existing.email.toLowerCase() === email.trim().toLowerCase()) {
+          toast.error("This email is already registered. Please sign in instead.");
+        } else {
+          toast.error("This mobile number is already registered. Please sign in instead.");
+        }
+        return;
+      }
+
+      startOtpFlow(email);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleAdminIdVerify(e: React.FormEvent) {
+    e.preventDefault();
+    if (adminIdInput.trim() !== FIXED_ADMIN_ID) {
+      toast.error("Invalid Admin Unique ID. Access denied.");
+      return;
+    }
+
+    // Case 1: An admin who already logged in with correct credentials —
+    // the ID verification completes their access to the dashboard.
+    if (pendingAdmin) {
+      store.setCurrentUser(pendingAdmin);
+      toast.success(`Admin ID verified! Welcome, ${pendingAdmin.name}.`);
+      setPendingAdmin(null);
+      navigate({ to: "/admin" });
+      return;
+    }
+
+    // Case 2: New admin registration — but only if seats remain.
+    if (adminSeatsUsed() >= MAX_ADMIN_ACCOUNTS) {
+      toast.error(
+        `Admin limit reached — all ${MAX_ADMIN_ACCOUNTS} admin accounts already exist with this Unique ID. No further admin registration is possible. Please sign in instead.`,
+      );
+      return;
+    }
+    setAdminVerified(true);
+    toast.success(
+      `Admin Unique ID verified! Seats remaining: ${MAX_ADMIN_ACCOUNTS - adminSeatsUsed()}. Complete your registration below.`,
+    );
+    setMode("admin_signup");
+  }
+
+  function handleAdminSignup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !email || !phone || !password || !confirmPassword) {
+      toast.error("Please fill in all admin registration fields");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    const existing = store.findExistingUser(email, phone);
+    if (existing) {
+      toast.error("This email or mobile is already registered.");
+      return;
+    }
+
+    const adminUser = store.registerUser({
+      name,
+      email,
+      phone,
+      role: "admin",
+      isVerified: true,
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
+    });
+    if (!adminUser) {
+      toast.error("Account with this email or mobile already exists.");
+      return;
+    }
+
+    const accounts = localAccounts();
+    accounts.push({ user: adminUser, password });
+    saveAccounts(accounts);
+
+    // Consume one of the 3 permanent admin seats for this fixed ID.
+    claimAdminSeat(adminUser.id);
+
+    store.setCurrentUser(adminUser);
+    toast.success(
+      `Admin account activated (${adminSeatsUsed()}/${MAX_ADMIN_ACCOUNTS} seats used)! Opening Store Operations Center...`,
+    );
+    navigate({ to: "/admin" });
   }
 
   function handleVerifyOtp(e: React.FormEvent) {
@@ -89,17 +237,26 @@ function AuthPage() {
       return;
     }
 
-    // Create user and activate account
-    const newUser = {
-      id: `user-${Date.now()}`,
+    // Create user and activate account (duplicate check is defensive here too).
+    const newUser = store.registerUser({
       name,
       email,
       phone,
-      role: "customer" as const,
+      role: "customer",
       isVerified: true,
       avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-      createdAt: new Date().toISOString(),
-    };
+    });
+
+    if (!newUser) {
+      toast.error("Account with this email or mobile already exists.");
+      setMode("signin");
+      return;
+    }
+
+    // Persist credentials so this user can sign in later (email OR mobile).
+    const accounts = localAccounts();
+    accounts.push({ user: newUser, password });
+    saveAccounts(accounts);
 
     store.setCurrentUser(newUser);
     toast.success("Email verified! Account activated successfully. Welcome to Basketo! 🎉");
@@ -108,23 +265,57 @@ function AuthPage() {
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error("Please enter both email/mobile and password");
+      return;
+    }
     setLoading(true);
 
     setTimeout(() => {
       setLoading(false);
-      // Log in demo user or match existing
-      const loggedIn = store.currentUser || {
-        id: `user-demo-customer`,
-        name: email.split("@")[0] || "Customer",
-        email,
-        phone: "+91 98765 43210",
-        role: "customer" as const,
-        isVerified: true,
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
-        createdAt: new Date().toISOString(),
-      };
-      store.setCurrentUser(loggedIn);
-      toast.success("Signed in successfully!");
+      const identifier = email.trim();
+      const accounts = localAccounts();
+
+      // Match by EMAIL or MOBILE — each account has one unique identity
+      let match = accounts.find(
+        (a) =>
+          a.user.email?.toLowerCase() === identifier.toLowerCase() ||
+          a.user.phone?.replace(/\s|-/g, "") === identifier.replace(/\s|-/g, ""),
+      );
+
+      // Fallback: check store.registeredUsers (persisted separately)
+      if (!match && store.registeredUsers.length > 0) {
+        match = {
+          user: store.registeredUsers.find(
+            (u) =>
+              u.email?.toLowerCase() === identifier.toLowerCase() ||
+              u.phone?.replace(/\s|-/g, "") === identifier.replace(/\s|-/g, ""),
+          ),
+          password: "",
+        };
+      }
+
+      if (!match || !match.user) {
+        toast.error(
+          "No account found with this email or mobile. Please create an account.",
+        );
+        return;
+      }
+
+      if (match.password && match.password !== password) {
+        toast.error("Incorrect password. Please try again.");
+        return;
+      }
+
+      store.setCurrentUser(match.user);
+
+      if (match.user.role === "admin") {
+        setPendingAdmin(match.user);
+        setMode("admin_verify");
+        toast.info("Admin detected — verify your Admin Unique ID to continue.");
+        return;
+      }
+      toast.success(`Welcome back, ${match.user.name}!`);
       navigate({ to: redirectTo });
     }, 400);
   }
@@ -138,10 +329,10 @@ function AuthPage() {
     startOtpFlow(email);
   }
 
-  function quickDemoLogin(role: "customer" | "admin") {
-    store.switchUser(role);
-    toast.success(`Logged in as ${role === "admin" ? "Admin Manager" : "Aarav Sharma (Customer)"}`);
-    navigate({ to: role === "admin" ? "/admin" : redirectTo });
+  function quickDemoLogin() {
+    // Demo login removed — real website mode. Users must sign up / sign in.
+    toast.info("Please create your account or sign in to continue.");
+    setMode("signup");
   }
 
   return (
@@ -195,27 +386,18 @@ function AuthPage() {
       {/* Right form container */}
       <div className="flex flex-col items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md space-y-6">
-          {/* Quick Demo Switcher */}
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs flex items-center justify-between">
-            <span className="font-semibold text-amber-900 dark:text-amber-200">
-              Instant Preview:
+          {/* Create-account prompt banner (demo login removed) */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs flex items-center justify-between">
+            <span className="font-semibold text-emerald-900 dark:text-emerald-200">
+              Shop like Flipkart — sign up to buy:
             </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => quickDemoLogin("customer")}
-                className="rounded-full bg-card border border-border px-3 py-1 font-bold text-foreground shadow-xs hover:bg-muted"
-              >
-                Demo Customer
-              </button>
-              <button
-                type="button"
-                onClick={() => quickDemoLogin("admin")}
-                className="rounded-full bg-emerald-600 px-3 py-1 font-bold text-white shadow-xs hover:bg-emerald-700"
-              >
-                Demo Admin
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => quickDemoLogin()}
+              className="rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-3 py-1 font-bold text-white shadow-xs hover:opacity-90"
+            >
+              Create Account →
+            </button>
           </div>
 
           <AnimatePresence mode="wait">
@@ -233,7 +415,7 @@ function AuthPage() {
                     Sign in to Basketo
                   </h1>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Access your orders, visual shipment tracking, and wishlist
+                    Use your registered email or mobile number + password
                   </p>
                 </div>
 
@@ -297,6 +479,22 @@ function AuthPage() {
                     className="font-bold text-primary hover:underline"
                   >
                     Create your account
+                  </button>
+                </div>
+
+                <div className="rounded-2xl border border-[#0033a0]/25 bg-[#0033a0]/5 p-3 text-center">
+                  <p className="text-[11px] font-semibold text-muted-foreground">
+                    Store Administrator?
+                  </p>
+                  <button
+                    onClick={() => {
+                      setAdminVerified(false);
+                      setAdminIdInput("");
+                      setMode("admin_verify");
+                    }}
+                    className="mt-1 text-xs font-bold text-[#0033a0] hover:underline"
+                  >
+                    🔐 Register with Admin Unique ID →
                   </button>
                 </div>
               </motion.div>
@@ -392,9 +590,10 @@ function AuthPage() {
 
                   <Button
                     type="submit"
-                    className="mt-2 h-11 w-full rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-500 font-bold text-white shadow-md shadow-emerald-500/25 transition hover:scale-[1.02]"
+                    disabled={loading}
+                    className="mt-2 h-11 w-full rounded-full bg-gradient-to-r from-emerald-600 via-emerald-500 to-amber-500 font-bold text-white shadow-md shadow-emerald-500/25 transition hover:scale-[1.02] disabled:opacity-60"
                   >
-                    Verify Email & Continue
+                    {loading ? "Sending verification code..." : "Verify Email & Continue"}
                   </Button>
                 </form>
 
@@ -525,6 +724,138 @@ function AuthPage() {
                     ← Back to Sign In
                   </button>
                 </div>
+              </motion.div>
+            )}
+            {/* 5. ADMIN UNIQUE ID VERIFICATION */}
+            {mode === "admin_verify" && (
+              <motion.div
+                key="admin_verify"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="space-y-5 rounded-3xl border-2 border-[#0033a0]/30 bg-card p-6 shadow-lg"
+              >
+                <div className="text-center">
+                  <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#0033a0]/10 text-[#0033a0]">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <h2 className="mt-3 font-display text-2xl font-bold">Admin Identity Verification</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {pendingAdmin
+                      ? "Enter your Admin Unique ID to access the Store Operations Center."
+                      : `Enter the unique Admin ID to register. Max ${MAX_ADMIN_ACCOUNTS} admin accounts — ${MAX_ADMIN_ACCOUNTS - adminSeatsUsed()} seat(s) remaining.`}
+                  </p>
+                </div>
+
+                <form onSubmit={handleAdminIdVerify} className="space-y-4">
+                  <input
+                    type="text"
+                    value={adminIdInput}
+                    onChange={(e) => setAdminIdInput(e.target.value)}
+                    placeholder="XXXX-ADMIN-XXXX-XXXX"
+                    className="h-12 w-full rounded-2xl border-2 border-[#0033a0]/30 text-center font-mono text-sm font-bold tracking-widest outline-none focus:border-[#0033a0]"
+                    required
+                  />
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-full bg-gradient-to-r from-[#0033a0] to-[#e30613] font-bold text-white"
+                  >
+                    Verify Admin ID
+                  </Button>
+                </form>
+
+                <div className="text-center text-xs">
+                  <button
+                    onClick={() => setMode("signin")}
+                    className="text-muted-foreground hover:underline"
+                  >
+                    ← Back to Sign In
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* 6. ADMIN REGISTRATION (after ID verified) */}
+            {mode === "admin_signup" && adminVerified && (
+              <motion.div
+                key="admin_signup"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-4"
+              >
+                <div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Admin ID Verified — Registration Unlocked
+                  </span>
+                  <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground">
+                    Create Admin Account
+                  </h1>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    You will manage the Store Operations & Logistics Center
+                  </p>
+                </div>
+
+                <form onSubmit={handleAdminSignup} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold">Full Name *</label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-2xl border border-border bg-card px-3.5 text-xs outline-none focus:border-[#0033a0]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold">Email Address *</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-2xl border border-border bg-card px-3.5 text-xs outline-none focus:border-[#0033a0]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold">Phone Number *</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="mt-1 h-10 w-full rounded-2xl border border-border bg-card px-3.5 text-xs outline-none focus:border-[#0033a0]"
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold">Password *</label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="mt-1 h-10 w-full rounded-2xl border border-border bg-card px-3.5 text-xs outline-none focus:border-[#0033a0]"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold">Confirm Password *</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="mt-1 h-10 w-full rounded-2xl border border-border bg-card px-3.5 text-xs outline-none focus:border-[#0033a0]"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="mt-2 h-11 w-full rounded-full bg-gradient-to-r from-[#0033a0] to-[#e30613] font-bold text-white"
+                  >
+                    Activate Admin Account
+                  </Button>
+                </form>
               </motion.div>
             )}
           </AnimatePresence>

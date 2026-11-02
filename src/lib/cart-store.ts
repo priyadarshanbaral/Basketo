@@ -10,24 +10,35 @@ export type CartItem = {
   quantity: number;
 };
 
-const STORAGE_KEY = "freshly_cart_v1";
+// Per-user storage so one account can never see another's cart.
+function storageKey(userId?: string | null) {
+  return userId ? `freshly_cart_v1_${userId}` : "freshly_cart_v1_guest";
+}
+
 const listeners = new Set<() => void>();
 let items: CartItem[] = [];
 
-function load() {
-  if (typeof window === "undefined") return;
+let currentUserId: string | null = null;
+
+function load(userId: string | null) {
+  currentUserId = userId;
+  if (typeof window === "undefined") {
+    items = [];
+    return;
+  }
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) items = JSON.parse(raw);
+    const raw = localStorage.getItem(storageKey(userId));
+    items = raw ? JSON.parse(raw) : [];
   } catch (err) {
     console.warn("Failed to load cart from storage", err);
+    items = [];
   }
+  listeners.forEach((l) => l());
 }
-load();
 
 function persist() {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    localStorage.setItem(storageKey(currentUserId), JSON.stringify(items));
   }
   listeners.forEach((l) => l());
 }
@@ -39,6 +50,11 @@ export const cart = {
   },
   getSnapshot(): CartItem[] {
     return items;
+  },
+  /** Switch the cart to a different user (login / logout / account switch). */
+  setUser(userId: string | null) {
+    if (userId === currentUserId) return;
+    load(userId);
   },
   add(item: Omit<CartItem, "quantity">, qty = 1) {
     const existing = items.find((i) => i.id === item.id);
@@ -63,6 +79,11 @@ export const cart = {
     persist();
   },
 };
+
+// Initialise with no user (guest) at app start.
+if (typeof window !== "undefined") {
+  load(null);
+}
 
 export function useCart() {
   const snap = useSyncExternalStore(cart.subscribe, cart.getSnapshot, () => items);

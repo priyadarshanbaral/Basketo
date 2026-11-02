@@ -39,27 +39,107 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-type AdminTab = "overview" | "orders" | "products" | "returns" | "coupons" | "customers";
+type AdminTab =
+  "overview" | "analytics" | "orders" | "products" | "returns" | "coupons" | "customers";
+
+type Analytics = {
+  totals: {
+    grossRevenue: number;
+    estimatedProfit: number;
+    marginPercent: number;
+    totalOrders: number;
+    validOrders: number;
+    totalUnitsSold: number;
+    cancelledOrders: number;
+    returnedOrders: number;
+    deliveredOrders: number;
+    registeredCustomers: number;
+    averageOrderValue: number;
+  };
+  topProducts: Array<{ productId: string; name: string; units: number; revenue: number }>;
+  salesByDay: Array<{ date: string; revenue: number; orders: number }>;
+  statusBreakdown: Array<{ status: string; count: number }>;
+  customers: Array<{
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    orders: number;
+    spent: number;
+    joinedAt: string;
+  }>;
+};
 
 function AdminPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<AdminTab>("overview");
 
+  // Live business analytics fetched from MongoDB aggregates
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/admin-analytics")
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive && d.ok) setAnalytics(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // Subscribe to live store
   const currentStore = useSyncExternalStore(
     (cb) => store.subscribe(cb),
     () => store,
+    () => store,
   );
+
+  const currentUser = currentStore.currentUser;
+
+  // --- ADMIN-ONLY GUARD ---
+  if (!currentUser || currentUser.role !== "admin") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-linear-to-br from-rose-50 via-background to-background px-4 dark:from-rose-950/20">
+        <div className="w-full max-w-md rounded-3xl border border-rose-500/20 bg-card p-10 text-center shadow-xl shadow-rose-500/10">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-rose-500/10">
+            <Shield className="h-8 w-8 text-rose-500" />
+          </div>
+          <h1 className="mt-5 font-display text-2xl font-black tracking-tight text-foreground">
+            Access Restricted
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            This area is reserved for authorised Basketo administrators only. If you believe this is
+            a mistake, please contact support.
+          </p>
+          <div className="mt-7 flex flex-col gap-2.5">
+            <button
+              onClick={() => navigate({ to: "/" })}
+              className="rounded-full bg-linear-to-r from-emerald-600 to-emerald-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-emerald-500/30 transition hover:scale-[1.02] active:scale-95"
+            >
+              ← Back to Home
+            </button>
+            <button
+              onClick={() => navigate({ to: "/auth" })}
+              className="rounded-full border border-border bg-card px-6 py-2.5 text-sm font-semibold text-muted-foreground transition hover:bg-muted"
+            >
+              Sign in as Admin
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const orders = currentStore.orders;
   const coupons = currentStore.coupons;
-  const currentUser = currentStore.currentUser;
 
   // Local state for shipment dispatch modal
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [selectedOrderForDispatch, setSelectedOrderForDispatch] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState<Order["status"]>("shipped");
-  const [newLocation, setNewLocation] = useState("Koramangala Sorting Hub, Bangalore");
+  const [newLocation, setNewLocation] = useState("Khandagiri Sorting Hub, Bhubaneswar");
   const [newDescription, setNewDescription] = useState("Package scanned and departed facility");
 
   // New coupon modal
@@ -133,12 +213,15 @@ function AdminPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/account"
-              className="rounded-full border border-border bg-card px-4 py-2 text-xs font-bold text-foreground shadow-xs hover:bg-muted"
+            <button
+              onClick={() => {
+                store.setCurrentUser(null);
+                toast.info("Signed out from admin session");
+              }}
+              className="rounded-full border border-rose-300 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 shadow-xs transition hover:bg-rose-100"
             >
-              Switch to Customer View
-            </Link>
+              Sign Out
+            </button>
           </div>
         </div>
 
@@ -146,6 +229,7 @@ function AdminPage() {
         <div className="mb-6 flex flex-wrap gap-2 border-b border-border/60 pb-3">
           {[
             { id: "overview", label: "Overview & Analytics", icon: DollarSign },
+            { id: "analytics", label: "Profit & Business Reports", icon: ShoppingCart },
             {
               id: "orders",
               label: "Order & Shipment Dispatcher",
@@ -184,42 +268,45 @@ function AdminPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="text-xs font-semibold text-muted-foreground">Gross Revenue</div>
+                <div className="text-xs font-semibold text-muted-foreground">
+                  Gross Revenue (Live)
+                </div>
                 <div className="mt-2 font-display text-2xl font-black text-foreground">
-                  ₹{Math.round(totalRevenue).toLocaleString("en-IN")}
+                  ₹
+                  {Math.round(analytics?.totals.grossRevenue ?? totalRevenue).toLocaleString(
+                    "en-IN",
+                  )}
                 </div>
                 <div className="mt-1 text-[11px] text-emerald-600 font-semibold">
-                  +18% this week
+                  Computed from MongoDB orders
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
                 <div className="text-xs font-semibold text-muted-foreground">Total Orders</div>
                 <div className="mt-2 font-display text-2xl font-black text-foreground">
-                  {totalOrders}
+                  {analytics?.totals.totalOrders ?? totalOrders}
                 </div>
                 <div className="mt-1 text-[11px] text-muted-foreground">From web & mobile app</div>
               </div>
 
               <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="text-xs font-semibold text-muted-foreground">Active Dispatches</div>
-                <div className="mt-2 font-display text-2xl font-black text-amber-600">
-                  {pendingCount}
+                <div className="text-xs font-semibold text-muted-foreground">Estimated Profit</div>
+                <div className="mt-2 font-display text-2xl font-black text-emerald-600">
+                  ₹{Math.round(analytics?.totals.estimatedProfit ?? 0).toLocaleString("en-IN")}
                 </div>
-                <div className="mt-1 text-[11px] text-amber-600 font-semibold">
-                  In transit / out for delivery
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  @ {analytics?.totals.marginPercent ?? 18}% assumed margin
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                <div className="text-xs font-semibold text-muted-foreground">
-                  Completed Deliveries
+                <div className="text-xs font-semibold text-muted-foreground">Products Sold</div>
+                <div className="mt-2 font-display text-2xl font-black text-[#0033a0]">
+                  {analytics?.totals.totalUnitsSold ?? 0}
                 </div>
-                <div className="mt-2 font-display text-2xl font-black text-emerald-600">
-                  {deliveredCount}
-                </div>
-                <div className="mt-1 text-[11px] text-emerald-600 font-semibold">
-                  99.4% on-time SLA
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  Units across all orders
                 </div>
               </div>
             </div>
@@ -266,7 +353,108 @@ function AdminPage() {
           </div>
         )}
 
-        {/* TAB 2: ORDER & SHIPMENT DISPATCHER */}
+        {/* TAB 2: PROFIT & BUSINESS ANALYTICS (MongoDB-powered) */}
+        {tab === "analytics" && (
+          <div className="space-y-6">
+            {!analytics ? (
+              <div className="rounded-3xl border border-border/80 bg-card p-12 text-center">
+                <Clock className="mx-auto h-10 w-10 text-muted-foreground/50 animate-pulse" />
+                <p className="mt-3 text-sm text-muted-foreground">Loading live business analytics from MongoDB…</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {[
+                    { label: "Gross Revenue", value: `₹${analytics.totals.grossRevenue.toLocaleString("en-IN")}`, color: "text-foreground" },
+                    { label: "Estimated Profit", value: `₹${analytics.totals.estimatedProfit.toLocaleString("en-IN")}`, color: "text-emerald-600" },
+                    { label: "Total Orders", value: analytics.totals.validOrders, color: "text-[#0033a0]" },
+                    { label: "Units Sold", value: analytics.totals.totalUnitsSold, color: "text-amber-600" },
+                    { label: "Avg. Order Value", value: `₹${analytics.totals.averageOrderValue.toLocaleString("en-IN")}`, color: "text-rose-600" },
+                  ].map((m) => (
+                    <div key={m.label} className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+                      <div className="text-xs font-semibold text-muted-foreground">{m.label}</div>
+                      <div className={`mt-2 font-display text-2xl font-black ${m.color}`}>
+                        {m.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Revenue by day bar chart */}
+                <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs">
+                  <h2 className="font-display text-lg font-bold">Revenue by Day</h2>
+                  {analytics.salesByDay.length === 0 ? (
+                    <p className="mt-3 text-xs text-muted-foreground">No orders recorded yet.</p>
+                  ) : (
+                    <div className="mt-5 flex h-40 items-end gap-2">
+                      {analytics.salesByDay.map((d) => {
+                        const max = Math.max(...analytics.salesByDay.map((x) => x.revenue), 1);
+                        return (
+                          <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
+                            <div
+                              title={`${d.date}: ₹${d.revenue} (${d.orders} orders)`}
+                              className="w-full rounded-t-lg bg-gradient-to-t from-[#0033a0] to-[#e30613] transition-all hover:opacity-80"
+                              style={{ height: `${Math.max(6, (d.revenue / max) * 130)}px` }}
+                            />
+                            <span className="text-[9px] text-muted-foreground">{d.date.slice(5)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Top products sold */}
+                <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs">
+                  <h2 className="font-display text-lg font-bold">Top Products Sold (Units & Revenue)</h2>
+                  {analytics.topProducts.length === 0 ? (
+                    <p className="mt-3 text-xs text-muted-foreground">No products sold yet.</p>
+                  ) : (
+                    <table className="mt-4 w-full text-left text-xs">
+                      <thead className="text-muted-foreground">
+                        <tr>
+                          <th className="pb-2">Product</th>
+                          <th className="pb-2 text-right">Units Sold</th>
+                          <th className="pb-2 text-right">Revenue</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {analytics.topProducts.map((p) => (
+                          <tr key={p.productId}>
+                            <td className="py-2.5 font-semibold text-foreground">{p.name}</td>
+                            <td className="py-2.5 text-right font-bold">{p.units}</td>
+                            <td className="py-2.5 text-right font-bold">₹{Math.round(p.revenue).toLocaleString("en-IN")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Status breakdown */}
+                <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-xs">
+                  <h2 className="font-display text-lg font-bold">Order Status Breakdown</h2>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {analytics.statusBreakdown.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No orders recorded yet.</p>
+                    ) : (
+                      analytics.statusBreakdown.map((s) => (
+                        <span
+                          key={s.status}
+                          className="rounded-full border border-border bg-muted/30 px-3.5 py-1.5 text-xs font-bold capitalize"
+                        >
+                          {s.status.replace("_", " ")}: {s.count}
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: ORDER & SHIPMENT DISPATCHER */}
         {tab === "orders" && (
           <div className="space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/80 bg-card p-5 shadow-xs">
@@ -538,28 +726,59 @@ function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  <tr className="hover:bg-muted/20">
-                    <td className="p-4 font-bold text-foreground">Aarav Sharma</td>
-                    <td className="p-4 text-muted-foreground">aarav.sharma@example.com</td>
-                    <td className="p-4 font-mono text-muted-foreground">+91 98765 43210</td>
-                    <td className="p-4 uppercase font-semibold">Customer</td>
-                    <td className="p-4">
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                        Verified
-                      </span>
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-muted/20">
-                    <td className="p-4 font-bold text-foreground">Priyadarshan (Admin)</td>
-                    <td className="p-4 text-muted-foreground">admin@basketo.in</td>
-                    <td className="p-4 font-mono text-muted-foreground">+91 98111 22334</td>
-                    <td className="p-4 uppercase font-semibold text-primary">Admin</td>
-                    <td className="p-4">
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                        Verified
-                      </span>
-                    </td>
-                  </tr>
+                  {(() => {
+                    const registered = currentStore.registeredUsers || [];
+                    const buyers = analytics?.customers || [];
+                    if (registered.length === 0 && buyers.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={5} className="p-10 text-center text-muted-foreground">
+                            No customers registered yet. Customers appear here as soon as
+                            someone signs up on the website.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return (
+                      <>
+                        {registered.map((u) => (
+                          <tr key={u.id} className="hover:bg-muted/20">
+                            <td className="p-4 font-bold text-foreground">{u.name}</td>
+                            <td className="p-4 text-muted-foreground">{u.email}</td>
+                            <td className="p-4 font-mono text-muted-foreground">{u.phone}</td>
+                            <td className="p-4 uppercase font-semibold">{u.role}</td>
+                            <td className="p-4">
+                              <span
+                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                                  u.isVerified
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                {u.isVerified ? "Verified" : "Pending"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {/* Buyers who placed real orders (from MongoDB aggregate) */}
+                        {buyers
+                          .filter((b) => !registered.some((r) => r.email === b.email))
+                          .map((b) => (
+                            <tr key={b.email || b.id} className="hover:bg-muted/20">
+                              <td className="p-4 font-bold text-foreground">{b.name}</td>
+                              <td className="p-4 text-muted-foreground">{b.email}</td>
+                              <td className="p-4 font-mono text-muted-foreground">{b.phone}</td>
+                              <td className="p-4 uppercase font-semibold">Customer</td>
+                              <td className="p-4">
+                                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                                  {b.orders} orders • ₹{Math.round(b.spent).toLocaleString("en-IN")}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                      </>
+                    );
+                  })()}
                 </tbody>
               </table>
             </div>
@@ -602,7 +821,7 @@ function AdminPage() {
               <input
                 value={newLocation}
                 onChange={(e) => setNewLocation(e.target.value)}
-                placeholder="e.g. HSR Sector 2 Hub, Bangalore"
+                placeholder="e.g. Khandagiri Sector 2 Hub, Bhubaneswar"
                 className="mt-1 h-10 w-full rounded-xl border border-border bg-card px-3 text-xs outline-none focus:border-primary"
                 required
               />
