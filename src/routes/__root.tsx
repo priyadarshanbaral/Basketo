@@ -122,12 +122,17 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { MobileBottomNav } from "@/components/site/MobileBottomNav";
+import { MobileCartBar } from "@/components/site/MobileCartBar";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
       <ScrollProgress />
       <Outlet />
+      <MobileCartBar />
+      <MobileBottomNav />
       <AiAssistant />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>

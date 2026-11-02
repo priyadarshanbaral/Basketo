@@ -73,10 +73,10 @@ export function AiAssistant() {
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.05 }}
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-50 grid h-14 w-14 place-items-center rounded-full gradient-leaf text-primary-foreground shadow-soft"
+        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 grid h-12 w-12 sm:h-14 sm:w-14 place-items-center rounded-full bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-xl hover:shadow-emerald-600/30 transition-all active:scale-95"
         aria-label="Open AI assistant"
       >
-        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {open ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
       </motion.button>
 
       <AnimatePresence>
@@ -86,7 +86,7 @@ export function AiAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 flex h-[600px] max-h-[80vh] w-[380px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+            className="fixed bottom-24 right-4 sm:bottom-24 sm:right-6 z-50 flex h-[560px] max-h-[75vh] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3">
               <div className="flex items-center gap-2">

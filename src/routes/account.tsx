@@ -100,11 +100,48 @@ function CustomerAccountPage() {
 
   const selectedOrder = orders.find((o) => o.id === selectedOrderId) || orders[0];
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50/50 pb-16 md:pb-0">
+        <Navbar />
+        <main className="mx-auto max-w-xl px-4 py-16 text-center">
+          <div className="rounded-3xl border border-slate-200 bg-white p-8 sm:p-10 shadow-sm">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-emerald-50 text-emerald-600 mb-4">
+              <UserIcon className="h-8 w-8" />
+            </div>
+            <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-slate-900">
+              Your Basketo Account
+            </h1>
+            <p className="mt-2 text-xs sm:text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+              Sign in to view your orders, live track 15-minute shipments, manage delivery addresses and save items to your wishlist.
+            </p>
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                to="/auth"
+                search={{ redirect_to: "/account" }}
+                className="w-full sm:w-auto rounded-full bg-emerald-600 px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-xs hover:bg-emerald-700 transition"
+              >
+                Sign In / Create Account
+              </Link>
+              <Link
+                to="/shop"
+                className="w-full sm:w-auto rounded-full border border-slate-200 bg-slate-50 px-6 py-3 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-100 transition"
+              >
+                Explore Market
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-bk-background">
       <Navbar />
 
-      <main className="mx-auto bk-container py-8">
+      <main className="mx-auto bk-container pt-6 pb-28 md:py-8">
         {/* Top welcome banner */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-bk-border bg-bk-primary p-6 sm:p-8">
           <div className="flex items-center gap-3.5">

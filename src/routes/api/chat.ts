@@ -1,4 +1,4 @@
-import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { createAiGatewayProvider } from "@/lib/ai-gateway.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, stepCountIs, tool, type UIMessage } from "ai";
 import { z } from "zod";
@@ -42,13 +42,18 @@ export const Route = createFileRoute("/api/chat")({
         if (!Array.isArray(body.messages)) {
           return new Response("Messages required", { status: 400 });
         }
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
-
-        const gateway = createLovableAiGatewayProvider(key);
+        const { model, hasKey } = createAiGatewayProvider();
+        if (!hasKey || !model) {
+          return new Response(
+            JSON.stringify({
+              error: "Missing API key. Please configure GEMINI_API_KEY to activate Basketo AI Assistant.",
+            }),
+            { status: 503, headers: { "Content-Type": "application/json" } },
+          );
+        }
 
         const result = streamText({
-          model: gateway("google/gemini-3-flash-preview"),
+          model,
           system: `You are Basketo's shopping assistant for an Indian online grocery & lifestyle store. Prices are in INR (₹).
 - Use the search_products tool to find products by keyword. Results are NOT paginated — every matching product is returned.
 - Use list_category to browse a whole category.

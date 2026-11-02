@@ -22,7 +22,14 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type AuthMode = "signin" | "signup" | "otp_verify" | "forgot_password" | "reset_password" | "admin_signup" | "admin_verify";
+type AuthMode =
+  | "signin"
+  | "signup"
+  | "otp_verify"
+  | "forgot_password"
+  | "reset_password"
+  | "admin_signup"
+  | "admin_verify";
 
 // ── FIXED ADMIN UNIQUE ID ─────────────────────────────
 // ADMIN UNIQUE ID SYSTEM
@@ -296,9 +303,7 @@ function AuthPage() {
       }
 
       if (!match || !match.user) {
-        toast.error(
-          "No account found with this email or mobile. Please create an account.",
-        );
+        toast.error("No account found with this email or mobile. Please create an account.");
         return;
       }
 
@@ -384,17 +389,30 @@ function AuthPage() {
       </div>
 
       {/* Right form container */}
-      <div className="flex flex-col items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-md space-y-6">
-          {/* Create-account prompt banner (demo login removed) */}
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs flex items-center justify-between">
+      <div className="flex flex-col items-center justify-center p-4 sm:p-12 min-h-screen">
+        <div className="w-full max-w-md space-y-5">
+          {/* Mobile Brand Link */}
+          <Link
+            to="/"
+            className="lg:hidden inline-flex items-center gap-2 text-slate-900 hover:opacity-90"
+          >
+            <div className="grid h-8 w-8 place-items-center rounded-xl bg-linear-to-tr from-emerald-500 to-amber-500 text-white shadow-xs">
+              <Leaf className="h-4 w-4" />
+            </div>
+            <span className="font-display text-xl font-black tracking-tight text-slate-900">
+              Basketo
+            </span>
+          </Link>
+
+          {/* Create-account prompt banner */}
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <span className="font-semibold text-emerald-900 dark:text-emerald-200">
-              Shop like Flipkart — sign up to buy:
+              Sign in to start 15-minute delivery:
             </span>
             <button
               type="button"
               onClick={() => quickDemoLogin()}
-              className="rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-3 py-1 font-bold text-white shadow-xs hover:opacity-90"
+              className="rounded-full bg-linear-to-r from-emerald-600 to-emerald-500 px-3.5 py-1 text-xs font-bold text-white shadow-xs hover:opacity-90 active:scale-95 self-end sm:self-auto cursor-pointer"
             >
               Create Account →
             </button>
@@ -739,7 +757,9 @@ function AuthPage() {
                   <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#0033a0]/10 text-[#0033a0]">
                     <ShieldCheck className="h-6 w-6" />
                   </div>
-                  <h2 className="mt-3 font-display text-2xl font-bold">Admin Identity Verification</h2>
+                  <h2 className="mt-3 font-display text-2xl font-bold">
+                    Admin Identity Verification
+                  </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {pendingAdmin
                       ? "Enter your Admin Unique ID to access the Store Operations Center."
@@ -786,7 +806,8 @@ function AuthPage() {
               >
                 <div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Admin ID Verified — Registration Unlocked
+                    <ShieldCheck className="h-3.5 w-3.5" /> Admin ID Verified — Registration
+                    Unlocked
                   </span>
                   <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-foreground">
                     Create Admin Account

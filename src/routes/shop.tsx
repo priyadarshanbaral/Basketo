@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Search, ShoppingBag, Sparkles, Truck } from "lucide-react";
+import { useState } from "react";
+import { Search, ShoppingBag, Sparkles, Truck, SlidersHorizontal, ArrowUpDown, X, Tag } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
 import { ProductCard } from "@/components/site/ProductCard";
@@ -18,6 +19,8 @@ const categoriesQO = queryOptions({
   queryFn: () => listCategories(),
 });
 
+type SortOption = "featured" | "price_asc" | "price_desc" | "rating" | "discount";
+
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>) => ({
     category: (search.category as string) || undefined,
@@ -27,7 +30,7 @@ export const Route = createFileRoute("/shop")({
     await context.queryClient.ensureQueryData(productsQO(undefined, undefined));
   },
   head: () => ({
-    meta: [{ title: "Shop — Basketo" }],
+    meta: [{ title: "Shop Catalog — Basketo" }],
   }),
   component: ShopPage,
 });
@@ -37,70 +40,87 @@ function ShopPage() {
   const { data: products } = useSuspenseQuery(productsQO(category, q));
   const { data: categories } = useSuspenseQuery(categoriesQO);
 
-  const filtered = products.filter((p) => {
+  const [sortBy, setSortBy] = useState<SortOption>("featured");
+  const [onlySale, setOnlySale] = useState(false);
+
+  let filtered = products.filter((p) => {
     if (q && !p.name.toLowerCase().includes(q.toLowerCase())) return false;
     if (category && p.category_id !== category) return false;
+    if (onlySale && !p.is_on_sale) return false;
     return true;
   });
+
+  if (sortBy === "price_asc") {
+    filtered = [...filtered].sort((a, b) => a.price - b.price);
+  } else if (sortBy === "price_desc") {
+    filtered = [...filtered].sort((a, b) => b.price - a.price);
+  } else if (sortBy === "rating") {
+    filtered = [...filtered].sort((a, b) => b.rating - a.rating);
+  } else if (sortBy === "discount") {
+    filtered = [...filtered].sort((a, b) => {
+      const discA = a.compare_at_price ? (a.compare_at_price - a.price) / a.compare_at_price : 0;
+      const discB = b.compare_at_price ? (b.compare_at_price - b.price) / b.compare_at_price : 0;
+      return discB - discA;
+    });
+  }
 
   const activeCategory = categories.find((c) => c.slug === category);
 
   return (
-    <div className="min-h-screen bg-bk-background">
+    <div className="min-h-screen bg-slate-50/50 pb-28 sm:pb-0">
       <Navbar />
 
-      {/* Page Hero Banner */}
-      <section className="relative overflow-hidden border-b border-bk-border/60 bg-linear-to-r from-bk-primary via-emerald-500 to-amber-500">
-        <div className="pointer-events-none absolute -right-10 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-56 w-56 rounded-full bg-amber-500/20 blur-2xl" />
+      {/* Header Banner */}
+      <section className="relative overflow-hidden border-b border-slate-200 bg-linear-to-r from-emerald-800 via-emerald-700 to-teal-800 text-white">
         <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
-              <Sparkles className="h-3 w-3" /> Fresh Drops Daily
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-xs">
+              <Sparkles className="h-3 w-3 text-amber-300" /> 15-Minute Delivery
             </span>
-            <h1 className="mt-2 font-display text-3xl font-black tracking-tight text-white drop-shadow-sm sm:text-4xl">
+            <h1 className="mt-2 font-display text-3xl sm:text-4xl font-black tracking-tight text-white">
               {activeCategory
                 ? `${activeCategory.icon} ${activeCategory.name}`
                 : q
-                  ? `Results for “${q}”`
-                  : "Shop the Market"}
+                  ? `Search: “${q}”`
+                  : "All Grocery & Lifestyle Aisles"}
             </h1>
-            <p className="mt-1 text-sm font-medium text-emerald-50/90">
-              {filtered.length} hand-picked products • quality assured
+            <p className="mt-1 text-xs sm:text-sm text-emerald-100">
+              Showing {filtered.length} products verified for fast delivery
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-xs font-bold text-white backdrop-blur-sm">
-              <Truck className="h-4 w-4" /> Free delivery over ₹499
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-4 py-2 text-xs font-bold text-white backdrop-blur-xs">
+              <Truck className="h-4 w-4 text-emerald-300" /> Free delivery over ₹499
             </span>
           </div>
         </div>
       </section>
 
-      <main className="mx-auto bk-container py-8">
-        {/* Category Chips */}
-        <div className="sticky top-16 z-20 -mx-4 bg-bk-surface/90 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 border-b border-bk-border/60">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none [&::-webkit-scrollbar]:hidden">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
+        {/* Category Horizontal Scroll Chips */}
+        <div className="sticky top-16 z-20 -mx-4 sm:-mx-6 bg-white/95 px-4 sm:px-6 py-3 backdrop-blur-md border-b border-slate-200 shadow-xs">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             <Link
               to="/shop"
-              search={{ category: undefined }}
-              className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-bold transition-all hover:scale-105 active:scale-95 ${
+              search={{ category: undefined, q }}
+              className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-bold transition cursor-pointer ${
                 !category
-                  ? "border-bk-primary bg-linear-to-r from-bk-primary to-emerald-500 text-white shadow-md shadow-bk-primary/30"
-                  : "border-bk-border bg-bk-surface text-bk-muted hover:border-bk-primary/40 hover:text-bk-primary"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              🛒 All
+              🛒 All Aisles
             </Link>
             {categories.map((c) => (
               <Link
                 key={c.slug}
                 to="/shop"
-                search={{ category: c.slug }}
-                className={`shrink-0 rounded-full border px-4 py-1.5 text-xs font-bold transition-all hover:scale-105 active:scale-95 ${
+                search={{ category: c.slug, q }}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
                   category === c.slug
-                    ? "border-bk-primary bg-linear-to-r from-bk-primary to-emerald-500 text-white shadow-md shadow-bk-primary/30"
-                    : "border-bk-border bg-bk-surface text-bk-muted hover:border-bk-primary/40 hover:text-bk-primary"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {c.icon} {c.name}
@@ -109,31 +129,90 @@ function ShopPage() {
           </div>
         </div>
 
+        {/* Filters and Sort Toolbar */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {filtered.length} Items Found
+            </span>
+            {q && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
+                Keyword: &ldquo;{q}&rdquo;
+                <Link to="/shop" search={{ category }} className="hover:text-emerald-950">
+                  <X className="h-3 w-3" />
+                </Link>
+              </span>
+            )}
+            {category && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-200">
+                {activeCategory?.name || category}
+                <Link to="/shop" search={{ q }} className="hover:text-amber-950">
+                  <X className="h-3 w-3" />
+                </Link>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setOnlySale(!onlySale)}
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                onlySale
+                  ? "bg-rose-500 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <Tag className="h-3 w-3" />
+              On Sale Only
+            </button>
+          </div>
+
+          {/* Sort By Dropdown */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="shop-sort" className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+              <ArrowUpDown className="h-3.5 w-3.5" /> Sort:
+            </label>
+            <select
+              id="shop-sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 cursor-pointer"
+            >
+              <option value="featured">Featured / Best Seller</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="rating">Highest Rated (★)</option>
+              <option value="discount">Biggest Discount (%)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Product Grid */}
         {filtered.length === 0 ? (
-          <div className="mx-auto mt-16 max-w-md rounded-2xl border border-dashed border-bk-border bg-bk-surface p-12 text-center shadow-sm">
-            <Search className="mx-auto h-12 w-12 text-bk-muted/40" />
-            <h3 className="mt-3 font-display text-lg font-bold text-bk-ink">
+          <div className="mx-auto mt-14 max-w-md rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-xs">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 text-slate-400">
+              <Search className="h-6 w-6" />
+            </div>
+            <h3 className="mt-4 font-display text-lg font-bold text-slate-900">
               No products found
             </h3>
-            <p className="mt-1 text-sm text-bk-muted">
-              Try a different category or search term.
+            <p className="mt-1 text-xs text-slate-500">
+              We couldn&apos;t find any matches for your filters. Try clearing your search keyword or switching category.
             </p>
             <Link
               to="/shop"
               search={{ category: undefined, q: undefined }}
-              className="mt-5 inline-flex items-center rounded-full bg-linear-to-r from-bk-primary to-emerald-500 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-bk-primary/30 transition hover:scale-105 active:scale-95"
+              className="mt-5 inline-flex items-center rounded-full bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 transition"
             >
-              Clear all filters
+              Reset All Filters
             </Link>
           </div>
         ) : (
-          <div className="mt-8 bk-grid-products">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
             {filtered.map((p, i) => (
               <motion.div
                 key={p.id}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i, 12) * 0.03, duration: 0.35 }}
+                transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.3 }}
               >
                 <ProductCard product={p} index={i} />
               </motion.div>
@@ -141,6 +220,7 @@ function ShopPage() {
           </div>
         )}
       </main>
+
       <Footer />
     </div>
   );

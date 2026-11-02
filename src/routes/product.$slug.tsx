@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
+import { ProductCard, type Product } from "@/components/site/ProductCard";
 import { getProduct, listProducts } from "@/lib/products.functions";
 import { cart } from "@/lib/cart-store";
 import { store, type Review } from "@/lib/flipkart-store";
@@ -255,7 +256,7 @@ function ProductPage() {
     <div className="min-h-screen bg-bk-background">
       <Navbar />
 
-      <main className="mx-auto bk-container py-8">
+      <main className="mx-auto bk-container pt-4 pb-28 sm:py-8">
         {/* Breadcrumbs */}
         <nav className="mb-6 flex items-center gap-1 text-xs text-bk-muted sm:text-sm">
           <Link to="/" className="hover:text-bk-primary transition">
@@ -289,7 +290,7 @@ function ProductPage() {
           <div className="lg:col-span-5">
             <div className="sticky top-24 space-y-4">
               {/* Main Image Stage */}
-              <div className="group relative aspect-square overflow-hidden rounded-2xl border border-bk-border bg-bk-surface p-2 shadow-sm">
+              <div className="group relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
                 <motion.img
                   key={activeImg}
                   initial={{ opacity: 0.6, scale: 0.98 }}
@@ -297,7 +298,11 @@ function ProductPage() {
                   transition={{ duration: 0.25 }}
                   src={activeImg}
                   alt={product.name}
-                  className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80";
+                  }}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
 
                 {off > 0 && (
@@ -417,8 +422,8 @@ function ProductPage() {
                 <div className="flex items-start gap-2 text-xs text-bk-muted">
                   <Tag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-bk-success" />
                   <span>
-                    <strong className="text-bk-ink">Bank Offer:</strong> 5% Unlimited Cashback
-                    on Axis Bank Card
+                    <strong className="text-bk-ink">Bank Offer:</strong> 5% Unlimited Cashback on
+                    Axis Bank Card
                   </span>
                 </div>
                 <div className="flex items-start gap-2 text-xs text-bk-muted">
@@ -589,9 +594,7 @@ function ProductPage() {
                     <div className="mt-3 overflow-hidden rounded-xl border border-bk-border text-xs sm:text-sm">
                       <div className="grid grid-cols-3 border-b border-bk-border bg-bk-surface-alt p-3">
                         <span className="font-semibold text-bk-muted">Brand / Type</span>
-                        <span className="col-span-2 font-medium text-bk-ink">
-                          {product.unit}
-                        </span>
+                        <span className="col-span-2 font-medium text-bk-ink">{product.unit}</span>
                       </div>
                       <div className="grid grid-cols-3 border-b border-bk-border p-3">
                         <span className="font-semibold text-bk-muted">Category</span>
@@ -600,17 +603,13 @@ function ProductPage() {
                         </span>
                       </div>
                       <div className="grid grid-cols-3 border-b border-bk-border bg-bk-surface-alt p-3">
-                        <span className="font-semibold text-bk-muted">
-                          Model Number / SKU
-                        </span>
+                        <span className="font-semibold text-bk-muted">Model Number / SKU</span>
                         <span className="col-span-2 font-mono font-medium text-bk-ink">
                           BSK-{product.id}-IN
                         </span>
                       </div>
                       <div className="grid grid-cols-3 border-b border-bk-border p-3">
-                        <span className="font-semibold text-bk-muted">
-                          Country of Origin
-                        </span>
+                        <span className="font-semibold text-bk-muted">Country of Origin</span>
                         <span className="col-span-2 font-medium text-bk-ink">India</span>
                       </div>
                       <div className="grid grid-cols-3 border-b border-bk-border bg-bk-surface-alt p-3">
@@ -620,9 +619,7 @@ function ProductPage() {
                         </span>
                       </div>
                       <div className="grid grid-cols-3 p-3">
-                        <span className="font-semibold text-bk-muted">
-                          Storage Instructions
-                        </span>
+                        <span className="font-semibold text-bk-muted">Storage Instructions</span>
                         <span className="col-span-2 font-medium text-bk-ink">
                           Store in a cool, dry place away from direct sunlight.
                         </span>
@@ -650,9 +647,7 @@ function ProductPage() {
                         const pct = stars === 5 ? 78 : stars === 4 ? 16 : stars === 3 ? 4 : 2;
                         return (
                           <div key={stars} className="flex items-center gap-2 text-xs">
-                            <span className="w-4 text-bk-muted font-semibold">
-                              {stars}★
-                            </span>
+                            <span className="w-4 text-bk-muted font-semibold">{stars}★</span>
                             <div className="h-2 flex-1 rounded-full bg-bk-border overflow-hidden">
                               <div
                                 className="h-full rounded-full bg-bk-primary"
@@ -743,10 +738,7 @@ function ProductPage() {
                         >
                           Cancel
                         </button>
-                        <button
-                          type="submit"
-                          className="bk-btn bk-btn-primary px-5 py-2"
-                        >
+                        <button type="submit" className="bk-btn bk-btn-primary px-5 py-2">
                           Submit Review
                         </button>
                       </div>
@@ -765,9 +757,7 @@ function ProductPage() {
                               <span>{rev.rating}</span>
                               <Star className="h-3 w-3 fill-white" />
                             </div>
-                            <span className="font-bold text-sm text-bk-ink">
-                              {rev.headline}
-                            </span>
+                            <span className="font-bold text-sm text-bk-ink">{rev.headline}</span>
                           </div>
                           <span className="text-xs text-bk-muted">
                             {rev.createdAt.includes("T")
@@ -814,9 +804,7 @@ function ProductPage() {
                 <h2 className="font-display text-2xl font-bold tracking-tight text-bk-ink">
                   Recently Viewed
                 </h2>
-                <p className="text-xs text-bk-muted mt-0.5">
-                  Items you checked out recently
-                </p>
+                <p className="text-xs text-bk-muted mt-0.5">Items you checked out recently</p>
               </div>
             </div>
 
@@ -863,6 +851,36 @@ function ProductPage() {
           </section>
         )}
       </main>
+
+      {/* Mobile Sticky Purchase Bar */}
+      <div className="fixed bottom-16 sm:hidden left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-4 py-2.5 flex items-center justify-between gap-3 shadow-lg">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-display text-base font-black text-slate-900">
+              ₹{Math.round(product.price).toLocaleString("en-IN")}
+            </span>
+            {off > 0 && <span className="text-[10px] font-bold text-emerald-600">{off}% OFF</span>}
+          </div>
+          <div className="truncate text-[10px] text-slate-500">{product.unit}</div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            className="rounded-xl border border-emerald-600 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 active:scale-95 transition"
+          >
+            Add to Cart
+          </button>
+          <button
+            type="button"
+            onClick={handleBuyNow}
+            className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-bold text-white shadow-xs active:scale-95 transition"
+          >
+            Buy Now
+          </button>
+        </div>
+      </div>
 
       <Footer />
     </div>

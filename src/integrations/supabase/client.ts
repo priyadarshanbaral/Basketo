@@ -30,6 +30,47 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function createMockSupabaseClient(): any {
+  console.warn("[AI Studio] Supabase environment variables not set — using in-memory mock client");
+  const authListeners = new Set<(event: string, session: any) => void>();
+  return {
+    auth: {
+      getUser: async () => ({ data: { user: null }, error: null }),
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: (callback: (event: string, session: any) => void) => {
+        authListeners.add(callback);
+        return {
+          data: {
+            subscription: {
+              unsubscribe: () => authListeners.delete(callback),
+            },
+          },
+        };
+      },
+      signInWithPassword: async () => ({ data: { user: null, session: null }, error: new Error("Supabase is not configured.") }),
+      signUp: async () => ({ data: { user: null, session: null }, error: new Error("Supabase is not configured.") }),
+      signOut: async () => ({ error: null }),
+      setSession: async () => ({ data: { session: null, user: null }, error: null }),
+    },
+    from: () => ({
+      select: () => {
+        const chain: any = {
+          eq: () => chain,
+          neq: () => chain,
+          single: async () => ({ data: null, error: null }),
+          maybeSingle: async () => ({ data: null, error: null }),
+          then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+        };
+        return chain;
+      },
+      insert: async () => ({ data: null, error: null }),
+      update: async () => ({ data: null, error: null }),
+      delete: async () => ({ data: null, error: null }),
+      upsert: async () => ({ data: null, error: null }),
+    }),
+  };
+}
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
@@ -38,13 +79,7 @@ function createSupabaseClient() {
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ["SUPABASE_URL"] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(", ")}. Connect Supabase in Lovable Cloud.`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
+    return createMockSupabaseClient();
   }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

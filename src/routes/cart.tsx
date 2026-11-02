@@ -150,7 +150,7 @@ function CartPage() {
     <div className="min-h-screen bg-bk-background">
       <Navbar />
 
-      <main className="mx-auto bk-container py-8">
+      <main className="mx-auto bk-container pt-4 pb-28 sm:py-8">
         {/* Step Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -194,10 +194,7 @@ function CartPage() {
             <p className="bk-empty-state__subtitle">
               Explore freshly harvested fruits, vegetables and dairy products.
             </p>
-            <Link
-              to="/shop"
-              className="mt-6 bk-btn bk-btn-primary bk-btn-lg"
-            >
+            <Link to="/shop" className="mt-6 bk-btn bk-btn-primary bk-btn-lg">
               Start shopping
             </Link>
           </div>
@@ -358,9 +355,7 @@ function CartPage() {
                               {a.houseNo}, {a.street}, {a.city}, {a.state} -{" "}
                               <strong>{a.pinCode}</strong>
                             </p>
-                            <div className="mt-1 text-[11px] text-bk-muted">
-                              Mobile: {a.phone}
-                            </div>
+                            <div className="mt-1 text-[11px] text-bk-muted">Mobile: {a.phone}</div>
                           </div>
                         </label>
                       ))}
@@ -450,9 +445,7 @@ function CartPage() {
                   <div className="mt-3 flex items-center justify-between rounded-xl border border-bk-primary/30 bg-bk-primary/5 p-3 text-xs">
                     <div>
                       <span className="font-bold text-bk-success">{appliedCoupon} applied</span>
-                      <div className="text-[11px] text-bk-muted">
-                        You saved ₹{discountAmount}
-                      </div>
+                      <div className="text-[11px] text-bk-muted">You saved ₹{discountAmount}</div>
                     </div>
                     <button
                       onClick={removeCoupon}
@@ -569,6 +562,41 @@ function CartPage() {
           </div>
         )}
       </main>
+
+      {/* Mobile Sticky Checkout Bar (above mobile bottom nav) */}
+      {items.length > 0 && (
+        <div className="fixed bottom-16 sm:hidden left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/90 px-4 py-2.5 flex items-center justify-between gap-3 shadow-lg">
+          <div>
+            <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+              Total ({count} items)
+            </div>
+            <div className="font-display text-base font-black text-slate-900">
+              ₹{Math.round(total).toLocaleString("en-IN")}
+            </div>
+          </div>
+
+          <div>
+            {step === 1 ? (
+              <Button
+                onClick={() => setStep(2)}
+                className="h-10 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md active:scale-95 transition"
+              >
+                <span>Checkout</span>
+                <ArrowRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleConfirmOrder}
+                disabled={placing}
+                className="h-10 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md active:scale-95 transition"
+              >
+                <Lock className="h-3.5 w-3.5 mr-1" />
+                <span>{placing ? "Authorizing..." : "Pay Now"}</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
