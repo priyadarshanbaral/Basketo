@@ -12,10 +12,9 @@ import {
   ChevronDown,
   Package,
   ShieldCheck,
-  Zap,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { BrandLogo, BRAND_NAME } from "@/components/site/BrandLogo";
+import { BrandLogo } from "@/components/site/BrandLogo";
 import { useCart, cart } from "@/lib/cart-store";
 import { store } from "@/lib/flipkart-store";
 import { useSyncExternalStore } from "react";
@@ -43,20 +42,20 @@ const QUICK_CATEGORIES = [
 
 export function Navbar() {
   const { count } = useCart();
-  const currentStore = useSyncExternalStore(
+  useSyncExternalStore(
     (cb) => store.subscribe(cb),
-    () => store,
-    () => store,
+    store.getSnapshotVersion,
+    store.getSnapshotVersion,
   );
-  const user = currentStore.currentUser;
-  const wishlistCount = currentStore.wishlist.length;
+  const user = store.currentUser;
+  const wishlistCount = store.wishlist.length;
   const navigate = useNavigate();
 
   const [q, setQ] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [selectedCity, setSelectedCity] = useState("Indiranagar, Bengaluru (560038)");
+  const [selectedCity, setSelectedCity] = useState("Kolathia, Khandagiri Vihar (751019)");
 
   useEffect(() => {
     cart.setUser(user?.id ?? null);
@@ -86,31 +85,6 @@ export function Navbar() {
 
   return (
     <>
-      {/* Top Announcement Bar */}
-      <div className="bg-slate-900 text-white text-xs py-1.5 px-4">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-400">
-              <Zap className="h-2.5 w-2.5 fill-current" /> 15-Min Delivery
-            </span>
-            <span className="hidden sm:inline text-slate-300">
-              Farm-fresh fruits, vegetables, dairy & essentials at your doorstep.
-            </span>
-            <span className="sm:hidden text-slate-300">Fresh essentials in 15 mins.</span>
-          </div>
-
-          <div className="hidden md:flex items-center gap-4 text-slate-300 text-[11px]">
-            <span>
-              Code <strong>SUPER100</strong> for ₹100 OFF
-            </span>
-            <span className="text-slate-600">|</span>
-            <Link to="/p/help" className="hover:text-emerald-400 transition">
-              Help 24/7
-            </Link>
-          </div>
-        </div>
-      </div>
-
       {/* Main Navbar */}
       <header
         className={`sticky top-0 z-40 w-full border-b border-slate-200/90 bg-white/95 backdrop-blur-md transition-all duration-200 ${
@@ -122,19 +96,15 @@ export function Navbar() {
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <Link
               to="/"
-              className="flex items-center gap-1.5 sm:gap-2 transition hover:opacity-90 active:scale-98"
+              className="flex items-center transition hover:opacity-90 active:scale-98"
+              aria-label="Basketo home"
             >
-              <div className="sm:hidden">
-                <BrandLogo size={26} />
-              </div>
-              <div className="hidden sm:block">
-                <BrandLogo size={36} />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-display text-lg sm:text-2xl font-black tracking-tight bg-linear-to-r from-emerald-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent">
-                  {BRAND_NAME}
-                </span>
-              </div>
+              <span className="sm:hidden">
+                <BrandLogo size="xs" withWordmark={false} />
+              </span>
+              <span className="hidden sm:inline-flex">
+                <BrandLogo size="md" />
+              </span>
             </Link>
 
             {/* Hyperlocal Location Pill */}
@@ -148,8 +118,8 @@ export function Navbar() {
                 <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">
                   Delivering To
                 </span>
-                <span className="font-semibold text-slate-900 line-clamp-1 max-w-[150px]">
-                  {selectedCity.split("(")[0]}
+                <span className="font-semibold text-slate-900 line-clamp-1 max-w-[200px]">
+                  {selectedCity.replace(/\s*\((\d{6})\)/, " $1")}
                 </span>
               </div>
               <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-black text-white">
@@ -397,10 +367,7 @@ export function Navbar() {
           <div className="relative flex w-full max-w-xs flex-1 flex-col bg-white shadow-2xl">
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-slate-200 p-4">
-              <div className="flex items-center gap-2">
-                <BrandLogo size={30} />
-                <span className="font-display text-lg font-black text-slate-900">{BRAND_NAME}</span>
-              </div>
+              <BrandLogo size="sm" />
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -582,12 +549,7 @@ export function Navbar() {
 
             <div className="mt-4 space-y-2">
               {[
-                "Indiranagar, Bengaluru (560038)",
-                "Koramangala, Bengaluru (560034)",
-                "Bandra West, Mumbai (400050)",
-                "Hauz Khas, New Delhi (110016)",
-                "Gachibowli, Hyderabad (500032)",
-                "Saheed Nagar, Bhubaneswar (751007)",
+                "Kolathia, Khandagiri Vihar (751019)",
               ].map((loc) => (
                 <button
                   key={loc}

@@ -22,11 +22,12 @@ const transport = new DefaultChatTransport({ api: "/api/chat" });
 export function AiAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [requestError, setRequestError] = useState<string | null>(null);
   const [initialMessages] = useState<UIMessage[]>(() => loadMessages());
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, status, setMessages, error, clearError } = useChat({
     id: "basketo-assistant",
     messages: initialMessages,
     transport,
@@ -58,7 +59,14 @@ export function AiAssistant() {
     const text = input.trim();
     if (!text || isLoading) return;
     setInput("");
-    await sendMessage({ text });
+    clearError();
+    setRequestError(null);
+    try {
+      await sendMessage({ text });
+    } catch (error) {
+      console.error("[assistant] Request failed:", error);
+      setRequestError(error instanceof Error ? error.message : "The assistant request failed.");
+    }
   }
 
   function clear() {
@@ -73,8 +81,9 @@ export function AiAssistant() {
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.05 }}
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 grid h-12 w-12 sm:h-14 sm:w-14 place-items-center rounded-full bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-xl hover:shadow-emerald-600/30 transition-all active:scale-95"
-        aria-label="Open AI assistant"
+        className="bk-ai-launcher fixed bottom-18 right-4 sm:bottom-6 sm:right-6 z-40 grid h-12 w-12 sm:h-14 sm:w-14 place-items-center rounded-full bg-linear-to-r from-emerald-600 to-emerald-500 text-white shadow-xl hover:shadow-emerald-600/30 transition-all active:scale-95"
+        aria-label={open ? "Close AI assistant" : "Open AI assistant"}
+        aria-expanded={open}
       >
         {open ? <X className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
       </motion.button>
@@ -86,16 +95,16 @@ export function AiAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-4 sm:bottom-24 sm:right-6 z-50 flex h-[560px] max-h-[75vh] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+            className="bk-ai-panel fixed bottom-24 right-4 sm:bottom-24 sm:right-6 z-50 flex h-[560px] max-h-[75vh] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border bg-linear-to-r from-emerald-50 via-white to-amber-50 px-4 py-3">
               <div className="flex items-center gap-2">
                 <div className="grid h-9 w-9 place-items-center rounded-xl gradient-leaf text-primary-foreground">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="font-display text-sm font-bold">Basketo Assistant</div>
-                  <div className="text-xs text-muted-foreground">Ask about any product</div>
+                  <div className="text-xs text-muted-foreground">Catalog + project expert</div>
                 </div>
               </div>
               {messages.length > 0 && (
@@ -111,16 +120,22 @@ export function AiAssistant() {
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
               {messages.length === 0 && (
                 <div className="space-y-3 py-6 text-center">
-                  <Sparkles className="mx-auto h-8 w-8 text-primary" />
+                  <Sparkles className="mx-auto h-8 w-8 text-emerald-600" />
                   <p className="text-sm text-muted-foreground">
-                    Hi! Ask me to find anything in the store.
+                    Hi! I&apos;m your Basketo concierge — ask me about products, prices, delivery,
+                    refunds, your account, or anything about the project.
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
-                    {["Show me phones", "Find lipsticks", "Cheap groceries"].map((s) => (
+                    {[
+                      "Show top-rated groceries",
+                      "Compare smartphones under ₹30,000",
+                      "How does Basketo store account data?",
+                      "Explain the project's tech stack",
+                    ].map((s) => (
                       <button
                         key={s}
                         onClick={() => sendMessage({ text: s })}
-                        className="rounded-full border border-border bg-muted/50 px-3 py-1 text-xs hover:bg-muted"
+                        className="rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-medium text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100"
                       >
                         {s}
                       </button>
@@ -140,8 +155,8 @@ export function AiAssistant() {
                     <div
                       className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
                         m.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
+                          ? "bg-linear-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-900/10"
+                            : "border border-slate-100 bg-slate-50 text-foreground shadow-sm"
                       }`}
                     >
                       {tools.length > 0 && m.role !== "user" && (
@@ -156,6 +171,26 @@ export function AiAssistant() {
                   </div>
                 );
               })}
+
+              {(error || requestError) && (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900" role="alert">
+                  <p className="font-bold">The assistant could not respond.</p>
+                  <p className="mt-1 break-words">{requestError || error?.message}</p>
+                  <p className="mt-1 text-rose-800">
+                    Check that the server has a valid GEMINI_API_KEY or LOVABLE_API_KEY and restart it.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearError();
+                      setRequestError(null);
+                    }}
+                    className="mt-2 font-bold underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
 
               {isLoading && (
                 <div className="flex justify-start">
@@ -175,8 +210,9 @@ export function AiAssistant() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about products…"
-                className="h-10 flex-1 rounded-full border border-border bg-background px-4 text-sm outline-none focus:border-primary"
+                placeholder="Ask for a product, price, or category..."
+                aria-label="Ask the Basketo shopping assistant"
+                className="h-10 flex-1 rounded-full border border-border bg-background px-4 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               />
               <button
                 type="submit"

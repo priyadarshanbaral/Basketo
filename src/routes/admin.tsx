@@ -73,6 +73,19 @@ type Analytics = {
 function AdminPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<AdminTab>("overview");
+  const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
+  const [selectedOrderForDispatch, setSelectedOrderForDispatch] = useState<Order | null>(null);
+  const [newStatus, setNewStatus] = useState<Order["status"]>("shipped");
+  const [newLocation, setNewLocation] = useState("Khandagiri Sorting Hub, Bhubaneswar");
+  const [newDescription, setNewDescription] = useState("Package scanned and departed facility");
+  const [riderName, setRiderName] = useState("");
+  const [riderPhone, setRiderPhone] = useState("");
+  const [couponModalOpen, setCouponModalOpen] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [discountVal, setDiscountVal] = useState(50);
+  const [minOrder, setMinOrder] = useState(499);
+  const [couponType, setCouponType] = useState<"flat" | "percent">("flat");
+  const [orderSearch, setOrderSearch] = useState("");
 
   // Live business analytics fetched from MongoDB aggregates
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
@@ -90,13 +103,13 @@ function AdminPage() {
   }, []);
 
   // Subscribe to live store
-  const currentStore = useSyncExternalStore(
+  useSyncExternalStore(
     (cb) => store.subscribe(cb),
-    () => store,
-    () => store,
+    store.getSnapshotVersion,
+    store.getSnapshotVersion,
   );
 
-  const currentUser = currentStore.currentUser;
+  const currentUser = store.currentUser;
 
   // --- ADMIN-ONLY GUARD ---
   if (!currentUser || currentUser.role !== "admin") {
@@ -132,25 +145,8 @@ function AdminPage() {
     );
   }
 
-  const orders = currentStore.orders;
-  const coupons = currentStore.coupons;
-
-  // Local state for shipment dispatch modal
-  const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
-  const [selectedOrderForDispatch, setSelectedOrderForDispatch] = useState<Order | null>(null);
-  const [newStatus, setNewStatus] = useState<Order["status"]>("shipped");
-  const [newLocation, setNewLocation] = useState("Khandagiri Sorting Hub, Bhubaneswar");
-  const [newDescription, setNewDescription] = useState("Package scanned and departed facility");
-
-  // New coupon modal
-  const [couponModalOpen, setCouponModalOpen] = useState(false);
-  const [newCode, setNewCode] = useState("");
-  const [discountVal, setDiscountVal] = useState(50);
-  const [minOrder, setMinOrder] = useState(499);
-  const [couponType, setCouponType] = useState<"flat" | "percent">("flat");
-
-  // Order search
-  const [orderSearch, setOrderSearch] = useState("");
+  const orders = store.orders;
+  const coupons = store.coupons;
 
   // Key metrics
   const totalRevenue = orders
@@ -167,9 +163,52 @@ function AdminPage() {
     e.preventDefault();
     if (!selectedOrderForDispatch) return;
 
-    store.updateOrderStatus(selectedOrderForDispatch.id, newStatus, newLocation, newDescription);
-    toast.success(`Shipment milestone dispatched for Order #${selectedOrderForDispatch.id}!`);
+    // Build a rich description that includes rider info when present.
+    let description = newDescription;
+    if (newStatus === "out_for_delivery" || newStatus === "delivered") {
+      if (riderName) description += ` • Rider: ${riderName}${riderPhone ? ` (${riderPhone})` : ""}`;
+    }
+
+    store.updateOrderStatus(
+      selectedOrderForDispatch.id,
+      newStatus,
+      newLocation,
+      description,
+    );
+
+    if (newStatus === "delivered") {
+      toast.success(
+        `🎉 Order #${selectedOrderForDispatch.id} marked as DELIVERED. Customer dashboard updated.`,
+      );
+    } else {
+      toast.success(`Shipment milestone dispatched for Order #${selectedOrderForDispatch.id}!`);
+    }
+
     setDispatchModalOpen(false);
+    setRiderName("");
+    setRiderPhone("");
+  }
+
+  function openDispatchModal(order: Order, presetStatus: Order["status"]) {
+    setSelectedOrderForDispatch(order);
+    setNewStatus(presetStatus);
+    setNewLocation(
+      presetStatus === "delivered"
+        ? `${order.shippingAddress.city} ${order.shippingAddress.pinCode}`
+        : presetStatus === "out_for_delivery"
+        ? `${order.shippingAddress.city} Delivery Route`
+        : "Khandagiri Sorting Hub, Bhubaneswar",
+    );
+    setNewDescription(
+      presetStatus === "delivered"
+        ? "Package handed over to customer. OTP verified."
+        : presetStatus === "out_for_delivery"
+        ? "Delivery executive en route with your package."
+        : "Package scanned and departed facility",
+    );
+    setRiderName("Suresh K");
+    setRiderPhone("+91 98450 11223");
+    setDispatchModalOpen(true);
   }
 
   function handleAddCoupon(e: React.FormEvent) {
@@ -191,7 +230,7 @@ function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 text-foreground">
+    <div className="bk-admin-dashboard min-h-screen bg-muted/20 text-foreground">
       <Navbar />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -224,6 +263,16 @@ function AdminPage() {
             </button>
           </div>
         </div>
+
+        {store.persistenceError && (
+          <div
+            className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="alert"
+          >
+            <strong>MongoDB sync is unavailable.</strong>{" "}
+            Admin changes are not confirmed as saved to the database. {store.persistenceError}
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="mb-6 flex flex-wrap gap-2 border-b border-border/60 pb-3">
@@ -528,16 +577,26 @@ function AdminPage() {
                         </select>
 
                         <button
-                          onClick={() => {
-                            setSelectedOrderForDispatch(o);
-                            setNewStatus(o.status);
-                            setDispatchModalOpen(true);
-                          }}
+                          onClick={() => openDispatchModal(o, o.status)}
                           className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700"
                         >
                           <Truck className="h-3.5 w-3.5" />
                           <span>Dispatch Checkpoint</span>
                         </button>
+
+                        {(o.status === "out_for_delivery" ||
+                          o.status === "in_transit" ||
+                          o.status === "shipped" ||
+                          o.status === "packed" ||
+                          o.status === "processing") && (
+                          <button
+                            onClick={() => openDispatchModal(o, "delivered")}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:from-emerald-700 hover:to-teal-600"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>Mark Delivered</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -727,7 +786,7 @@ function AdminPage() {
                 </thead>
                 <tbody className="divide-y divide-border/60">
                   {(() => {
-                    const registered = currentStore.registeredUsers || [];
+                    const registered = store.registeredUsers || [];
                     const buyers = analytics?.customers || [];
                     if (registered.length === 0 && buyers.length === 0) {
                       return (
@@ -812,7 +871,7 @@ function AdminPage() {
                 <option value="shipped">SHIPPED (Handed to Carrier)</option>
                 <option value="in_transit">IN TRANSIT (On Line Haul Vehicle)</option>
                 <option value="out_for_delivery">OUT FOR DELIVERY (With Local Rider)</option>
-                <option value="delivered">DELIVERED (Doorstep Delivery Complete)</option>
+                <option value="delivered">✅ DELIVERED (Doorstep Delivery Complete)</option>
               </select>
             </div>
 
@@ -838,17 +897,64 @@ function AdminPage() {
               />
             </div>
 
+            {(newStatus === "out_for_delivery" || newStatus === "delivered") && (
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2.5">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
+                  🚴 Delivery Rider Details
+                </p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground">
+                      Rider Name
+                    </label>
+                    <input
+                      value={riderName}
+                      onChange={(e) => setRiderName(e.target.value)}
+                      placeholder="e.g. Suresh K"
+                      className="mt-1 h-9 w-full rounded-lg border border-border bg-card px-2.5 text-xs outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-muted-foreground">
+                      Rider Phone
+                    </label>
+                    <input
+                      value={riderPhone}
+                      onChange={(e) => setRiderPhone(e.target.value)}
+                      placeholder="+91 98xxx xxxxx"
+                      className="mt-1 h-9 w-full rounded-lg border border-border bg-card px-2.5 text-xs outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  These details are shown to the customer on their tracking page so they can identify the rider.
+                </p>
+              </div>
+            )}
+
             <DialogFooter className="pt-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setDispatchModalOpen(false)}
+                onClick={() => {
+                  setDispatchModalOpen(false);
+                  setRiderName("");
+                  setRiderPhone("");
+                }}
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" className="bg-emerald-600 text-white font-bold">
-                Broadcast Event
+              <Button
+                type="submit"
+                size="sm"
+                className={
+                  newStatus === "delivered"
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold"
+                    : "bg-emerald-600 text-white font-bold"
+                }
+              >
+                {newStatus === "delivered" ? "✅ Confirm Delivery" : "Broadcast Event"}
               </Button>
             </DialogFooter>
           </form>

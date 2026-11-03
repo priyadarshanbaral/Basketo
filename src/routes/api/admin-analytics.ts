@@ -3,6 +3,7 @@
 // No demo/mock numbers: everything is computed from live orders in the DB.
 import { createFileRoute } from "@tanstack/react-router";
 import { collections, getMongoDb } from "@/integrations/mongodb/client";
+import type { Order } from "@/lib/flipkart-store";
 
 // Assumed margin % used to derive profit from revenue when cost price is not
 // tracked per-product. Adjust here if you store real cost prices later.
@@ -15,13 +16,23 @@ export const Route = createFileRoute("/api/admin-analytics")({
         await getMongoDb();
         const c = collections();
 
-        // All orders live inside per-user data_ documents + standalone docs.
-        // Pull every per-user doc and flatten its orders.
-        const usersCol = await (await c).users();
-        const docs = await usersCol.find({ _id: /^data_/ }).toArray();
+        const [userDataDocs, legacyUserDocs, registeredUsers] = await Promise.all([
+          (await c.userData()).find({}).toArray(),
+          (await c.users()).find({}).toArray(),
+          (await c.registeredUsers()).find({}).toArray(),
+        ]);
+        const docs = [
+          ...userDataDocs,
+          ...legacyUserDocs.filter((doc) => /^data_/.test(String(doc._id))),
+        ];
+        const accounts = [
+          ...legacyUserDocs.filter(
+            (doc) => !/^data_/.test(String(doc._id)) && typeof doc.id === "string",
+          ),
+          ...registeredUsers,
+        ];
 
-        type AnyOrder = any;
-        const allOrders: AnyOrder[] = [];
+        const allOrders: Order[] = [];
         const customersMap = new Map<
           string,
           {
@@ -35,12 +46,8 @@ export const Route = createFileRoute("/api/admin-analytics")({
           }
         >();
 
-        // Registered accounts (from shared users collection)
-        const accountsCol = await usersCol;
-        const accounts = await accountsCol.find({ _id: { $not: /^data_/ } }).toArray();
-
         for (const doc of docs) {
-          const orders: AnyOrder[] = doc?.orders ?? [];
+          const orders: Order[] = Array.isArray(doc?.orders) ? doc.orders : [];
           for (const o of orders) {
             if (!o || !o.id) continue;
             allOrders.push(o);
@@ -123,7 +130,10 @@ export const Route = createFileRoute("/api/admin-analytics")({
             cancelledOrders: statusCounts["cancelled"] || 0,
             returnedOrders: statusCounts["returned"] || 0,
             deliveredOrders: statusCounts["delivered"] || 0,
-            registeredCustomers: accounts.length + customersMap.size,
+            registeredCustomers: new Set([
+              ...accounts.map((account) => account.id).filter(Boolean),
+              ...[...customersMap.values()].map((customer) => customer.id).filter(Boolean),
+            ]).size,
             averageOrderValue: validOrders.length
               ? Math.round(grossRevenue / validOrders.length)
               : 0,

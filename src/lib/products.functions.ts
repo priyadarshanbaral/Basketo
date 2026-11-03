@@ -76,7 +76,7 @@ const ICONS: Record<string, string> = {
 const COLORS = ["#10b981", "#f59e0b", "#3b82f6", "#ec4899", "#8b5cf6", "#f43f5e", "#14b8a6"];
 
 // ── CURATED BASKETO FARM-FRESH GROCERY CATALOG ─────────────────────────
-export const CURATED_BASKETO_PRODUCTS: StoreProduct[] = [
+const BASE_BASKETO_PRODUCTS: StoreProduct[] = [
   {
     id: "bk-1",
     name: "Devgad Ratnagiri Alphonso Mangoes",
@@ -677,6 +677,270 @@ function slugify(s: string) {
     .replace(/^-+|-+$/g, "");
 }
 
+type AdditionalProduct = Pick<
+  StoreProduct,
+  "id" | "name" | "description" | "price" | "unit" | "stock" | "images" | "rating" | "category_id"
+> &
+  Partial<Pick<StoreProduct, "compare_at_price" | "sold_count" | "is_on_sale" | "is_featured">>;
+
+function createAdditionalProduct(product: AdditionalProduct): StoreProduct {
+  const category = product.category_id || "groceries";
+  return {
+    ...product,
+    slug: `${product.id}-${slugify(product.name)}`,
+    compare_at_price: product.compare_at_price ?? null,
+    sold_count: product.sold_count ?? 320,
+    is_on_sale: product.is_on_sale ?? false,
+    is_featured: product.is_featured ?? product.rating >= 4.7,
+    categories: {
+      name: category.replace(/-/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      slug: category,
+    },
+  };
+}
+
+const ADDITIONAL_BASKETO_PRODUCTS: StoreProduct[] = [
+  {
+    id: "bk-33",
+    name: "Alphonso Mango Greek Yogurt",
+    description: "Creamy strained yogurt blended with real Alphonso mango pulp.",
+    price: 89,
+    compare_at_price: 110,
+    unit: "150 g cup",
+    stock: 38,
+    images: ["https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80"],
+    rating: 4.7,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-34",
+    name: "Organic Baby Spinach Leaves",
+    description: "Tender, washed baby spinach leaves packed fresh from a local farm.",
+    price: 65,
+    compare_at_price: 85,
+    unit: "200 g pack",
+    stock: 42,
+    images: ["https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=800&q=80"],
+    rating: 4.8,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-35",
+    name: "Sweet Seedless Green Grapes",
+    description: "Crisp, naturally sweet green grapes selected for freshness.",
+    price: 119,
+    compare_at_price: 149,
+    unit: "500 g punnet",
+    stock: 31,
+    images: ["https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=800&q=80"],
+    rating: 4.7,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-36",
+    name: "Farm Fresh Red Cherry Tomatoes",
+    description: "Sweet, juicy cherry tomatoes picked at peak ripeness.",
+    price: 79,
+    compare_at_price: 99,
+    unit: "250 g box",
+    stock: 55,
+    images: ["https://images.unsplash.com/photo-1546094096-0df4bcaaa337?w=800&q=80"],
+    rating: 4.8,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-37",
+    name: "Cold-Pressed Extra Virgin Olive Oil",
+    description: "Aromatic extra virgin olive oil for dressings, dips and everyday cooking.",
+    price: 449,
+    compare_at_price: 549,
+    unit: "500 ml bottle",
+    stock: 26,
+    images: ["https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=800&q=80"],
+    rating: 4.8,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-38",
+    name: "Stone-Ground Whole Wheat Atta",
+    description: "Nutritious whole wheat flour stone-ground in small batches.",
+    price: 189,
+    compare_at_price: 219,
+    unit: "5 kg bag",
+    stock: 64,
+    images: ["https://images.unsplash.com/photo-1627485937980-221c88ac04f9?w=800&q=80"],
+    rating: 4.7,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-39",
+    name: "Raw Forest Honey",
+    description: "Unheated wildflower honey with a floral aroma and naturally rich taste.",
+    price: 249,
+    compare_at_price: 299,
+    unit: "350 g jar",
+    stock: 29,
+    images: ["https://images.unsplash.com/photo-1587049352851-8d4e89133924?w=800&q=80"],
+    rating: 4.9,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-40",
+    name: "Crispy Multigrain Breakfast Cereal",
+    description: "Toasted whole grains and seeds for a quick, satisfying breakfast.",
+    price: 179,
+    compare_at_price: 220,
+    unit: "400 g box",
+    stock: 43,
+    images: ["https://images.unsplash.com/photo-1517673132405-a56a62b18caf?w=800&q=80"],
+    rating: 4.6,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-41",
+    name: "Natural Almond Butter",
+    description: "Small-batch roasted almond butter with no added palm oil.",
+    price: 329,
+    compare_at_price: 399,
+    unit: "250 g jar",
+    stock: 24,
+    images: ["https://images.unsplash.com/photo-1612182062633-9ff3b3598e96?w=800&q=80"],
+    rating: 4.8,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-42",
+    name: "Whole Bean Monsoon Malabar Coffee",
+    description: "Deep, smooth single-origin coffee beans with a mellow chocolate finish.",
+    price: 399,
+    compare_at_price: 475,
+    unit: "250 g pouch",
+    stock: 21,
+    images: ["https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=800&q=80"],
+    rating: 4.9,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-43",
+    name: "Cold-Pressed Fresh Orange Juice",
+    description: "Bright, refreshing juice pressed from ripe oranges with no added sugar.",
+    price: 99,
+    compare_at_price: 125,
+    unit: "250 ml bottle",
+    stock: 34,
+    images: ["https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&q=80"],
+    rating: 4.7,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-44",
+    name: "Organic Turmeric Root Powder",
+    description: "Finely milled turmeric with a warm aroma and naturally rich golden color.",
+    price: 89,
+    compare_at_price: 110,
+    unit: "200 g pouch",
+    stock: 70,
+    images: ["https://images.unsplash.com/photo-1615485500704-8e990f9900f4?w=800&q=80"],
+    rating: 4.8,
+    category_id: "groceries",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-45",
+    name: "Gentle Aloe Vera Face Wash",
+    description: "A refreshing daily cleanser made with soothing aloe vera extract.",
+    price: 159,
+    compare_at_price: 199,
+    unit: "150 ml tube",
+    stock: 48,
+    images: ["https://images.unsplash.com/photo-1556229010-6c3f2c9ca5f8?w=800&q=80"],
+    rating: 4.6,
+    category_id: "beauty",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-46",
+    name: "Hydrating Rose Water Toner",
+    description: "A light, alcohol-free facial mist with a delicate rose-water fragrance.",
+    price: 199,
+    compare_at_price: 249,
+    unit: "200 ml bottle",
+    stock: 35,
+    images: ["https://images.unsplash.com/photo-1601049541289-9b1b7bbbfe19?w=800&q=80"],
+    rating: 4.7,
+    category_id: "beauty",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-47",
+    name: "Daily Mineral Sunscreen SPF 50",
+    description: "Lightweight broad-spectrum sunscreen for comfortable everyday wear.",
+    price: 349,
+    compare_at_price: 425,
+    unit: "50 g tube",
+    stock: 27,
+    images: ["https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&q=80"],
+    rating: 4.8,
+    category_id: "beauty",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-48",
+    name: "Bamboo Kitchen Storage Canister Set",
+    description: "Reusable airtight pantry canisters with natural bamboo lids.",
+    price: 599,
+    compare_at_price: 749,
+    unit: "Set of 3",
+    stock: 18,
+    images: ["https://images.unsplash.com/photo-1603199506016-b9a594b593c0?w=800&q=80"],
+    rating: 4.7,
+    category_id: "kitchen-accessories",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-49",
+    name: "Reusable Glass Meal Prep Containers",
+    description: "Durable glass food containers with secure, easy-clean lids.",
+    price: 449,
+    compare_at_price: 549,
+    unit: "Set of 2",
+    stock: 22,
+    images: ["https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=800&q=80"],
+    rating: 4.6,
+    category_id: "kitchen-accessories",
+    is_on_sale: true,
+  },
+  {
+    id: "bk-50",
+    name: "Handwoven Cotton Market Tote",
+    description: "A sturdy reusable cotton tote for daily shopping and errands.",
+    price: 299,
+    compare_at_price: 375,
+    unit: "1 bag",
+    stock: 33,
+    images: ["https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&q=80"],
+    rating: 4.7,
+    category_id: "home-decoration",
+    is_on_sale: true,
+  },
+].map(createAdditionalProduct);
+
+export const CURATED_BASKETO_PRODUCTS: StoreProduct[] = [
+  ...BASE_BASKETO_PRODUCTS,
+  ...ADDITIONAL_BASKETO_PRODUCTS,
+];
+
 const USD_TO_INR = 84;
 const toINR = (usd: number) => Math.round(usd * USD_TO_INR);
 
@@ -717,7 +981,7 @@ export const listProducts = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     // 1. Filter curated farm-fresh products
-    let curatedMatches = CURATED_BASKETO_PRODUCTS.filter((p) => {
+    const curatedMatches = CURATED_BASKETO_PRODUCTS.filter((p) => {
       if (data.search) {
         const q = data.search.toLowerCase();
         return (

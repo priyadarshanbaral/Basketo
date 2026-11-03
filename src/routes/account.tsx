@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useSyncExternalStore } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User as UserIcon,
@@ -28,7 +29,15 @@ import {
 } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
-import { store, type Order, type Address, type User } from "@/lib/flipkart-store";
+import {
+  store,
+  type Order,
+  type Address,
+  type User,
+  type NotificationItem,
+  type TrackingEvent,
+} from "@/lib/flipkart-store";
+import { listProducts } from "@/lib/products.functions";
 import { cart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import {
@@ -41,6 +50,25 @@ import {
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/account")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab:
+      typeof search.tab === "string" &&
+      [
+        "overview",
+        "orders",
+        "tracking",
+        "profile",
+        "addresses",
+        "wishlist",
+        "payments",
+        "returns",
+        "reviews",
+        "notifications",
+      ].includes(search.tab)
+        ? (search.tab as TabType)
+        : undefined,
+    orderId: typeof search.orderId === "string" ? search.orderId : undefined,
+  }),
   head: () => ({ meta: [{ title: "My Account — Basketo" }] }),
   component: CustomerAccountPage,
 });
@@ -64,17 +92,17 @@ function CustomerAccountPage() {
   const [activeTab, setActiveTab] = useState<TabType>(search.tab || "overview");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(search.orderId || null);
 
-  const currentStore = useSyncExternalStore(
+  useSyncExternalStore(
     (cb) => store.subscribe(cb),
-    () => store,
-    () => store,
+    store.getSnapshotVersion,
+    store.getSnapshotVersion,
   );
 
-  const user = currentStore.currentUser;
-  const orders = currentStore.orders;
-  const addresses = currentStore.addresses;
-  const wishlist = currentStore.wishlist;
-  const notifications = currentStore.notifications;
+  const user = store.currentUser;
+  const orders = store.orders;
+  const addresses = store.addresses;
+  const wishlist = store.wishlist;
+  const notifications = store.notifications;
 
   useEffect(() => {
     if (search.tab) setActiveTab(search.tab);
@@ -138,7 +166,7 @@ function CustomerAccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bk-background">
+    <div className="bk-customer-dashboard min-h-screen bg-bk-background">
       <Navbar />
 
       <main className="mx-auto bk-container pt-6 pb-28 md:py-8">
@@ -180,6 +208,16 @@ function CustomerAccountPage() {
             )}
           </div>
         </div>
+
+        {store.persistenceError && (
+          <div
+            className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="alert"
+          >
+            <strong>MongoDB sync is unavailable.</strong>{" "}
+            Your account changes are not confirmed as saved to the database. {store.persistenceError}
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-4">
           {/* Left Sidebar Navigation */}
@@ -429,7 +467,7 @@ function OverviewTab({
             You haven't placed any orders yet. Your orders, total spending, and live shipment
             tracking will appear here automatically once you make your first purchase.
           </p>
-          <Link to="/shop" className="mt-5 bk-btn bk-btn-primary inline-flex">
+          <Link to="/shop" className="mt-5 bk-btn bk-btn-primary rounded-2xl inline-flex px-6 py-3">
             Browse Shop & Place First Order <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -638,7 +676,7 @@ function OrdersTab({
             </p>
             <Link
               to="/shop"
-              className="mt-4 bk-btn bk-btn-primary inline-flex"
+              className="mt-4 bk-btn bk-btn-primary rounded-2xl inline-flex px-6 py-3"
             >
               Browse Shop
             </Link>
@@ -810,7 +848,7 @@ function ShipmentTrackingTab({
     { key: "LOCAL_HUB", label: "Reached Local Delivery Hub" },
     { key: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
     { key: "DELIVERED", label: "Delivered to Doorstep" },
-  ];
+  ] as const satisfies readonly { key: TrackingEvent["status"]; label: string }[];
 
   const completedStatuses = new Set(shipment.events.map((e) => e.status));
 
@@ -851,6 +889,108 @@ function ShipmentTrackingTab({
         )}
       </div>
 
+      {/* 🚚 OUT FOR DELIVERY – LIVE BANNER */}
+      {selectedOrder.status === "out_for_delivery" && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 p-5 text-white shadow-lg shadow-emerald-500/30"
+        >
+          <motion.div
+            aria-hidden
+            animate={{ x: ["-20%", "120%"] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "linear" }}
+            className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <motion.div
+                animate={{ x: [0, 6, 0] }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                className="grid h-12 w-12 place-items-center rounded-full bg-white/20 backdrop-blur-xs"
+              >
+                <Truck className="h-6 w-6" />
+              </motion.div>
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-100">
+                  🚴 Your order is on the way
+                </div>
+                <div className="font-display text-lg font-black leading-tight">
+                  Out for delivery — arriving soon!
+                </div>
+                <div className="text-xs text-emerald-50">
+                  Rider is heading to {selectedOrder.shippingAddress.city} -{" "}
+                  {selectedOrder.shippingAddress.pinCode}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-xl bg-white/15 px-3 py-2 backdrop-blur-xs text-xs">
+              <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-100">
+                Estimated
+              </div>
+              <div className="font-display text-base font-black">
+                {shipment.estimatedDeliveryDate}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ✅ DELIVERED – SUCCESS BANNER */}
+      {selectedOrder.status === "delivered" && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/50 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-lg shadow-emerald-500/10"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/40"
+              >
+                <CheckCircle2 className="h-7 w-7" strokeWidth={2.5} />
+              </motion.div>
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                  ✅ Order Delivered Successfully
+                </div>
+                <div className="font-display text-xl font-black leading-tight text-emerald-900">
+                  Your order has been delivered!
+                </div>
+                <div className="text-xs text-emerald-700">
+                  Delivered to {selectedOrder.shippingAddress.houseNo},{" "}
+                  {selectedOrder.shippingAddress.street}, {selectedOrder.shippingAddress.city} -{" "}
+                  {selectedOrder.shippingAddress.pinCode}
+                </div>
+                {selectedOrder.deliveredAt && (
+                  <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                    Delivered on{" "}
+                    {new Date(selectedOrder.deliveredAt).toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="rounded-xl border border-emerald-200 bg-white/80 px-3 py-2 backdrop-blur-xs text-xs">
+              <div className="text-[10px] uppercase font-bold tracking-wider text-emerald-700">
+                Status
+              </div>
+              <div className="font-display text-base font-black text-emerald-700">
+                DELIVERED ✓
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="bk-card rounded-xl p-4">
           <div className="text-xs font-semibold text-bk-muted">Courier Partner</div>
@@ -877,10 +1017,20 @@ function ShipmentTrackingTab({
         <div className="bk-card rounded-xl p-4">
           <div className="text-xs font-semibold text-bk-muted">Estimated Delivery Date</div>
           <div className="mt-1 font-display text-lg font-bold text-bk-success">
-            {shipment.estimatedDeliveryDate}
+            {selectedOrder.status === "delivered" && selectedOrder.deliveredAt
+              ? new Date(selectedOrder.deliveredAt).toLocaleDateString("en-IN", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "short",
+                })
+              : shipment.estimatedDeliveryDate}
           </div>
           <div className="mt-1 text-[11px] text-bk-muted">
-            {shipment.daysRemaining === 0
+            {selectedOrder.status === "delivered"
+              ? "🎉 Delivered"
+              : selectedOrder.status === "out_for_delivery"
+              ? "Arriving in minutes"
+              : shipment.daysRemaining === 0
               ? "Arriving Today"
               : `${shipment.daysRemaining} Day(s) Remaining`}
           </div>
@@ -894,7 +1044,7 @@ function ShipmentTrackingTab({
 
         <div className="bk-timeline">
           {ALL_CHECKPOINTS.map((cp, idx) => {
-            const isCompleted = completedStatuses.has(cp.key as any);
+            const isCompleted = completedStatuses.has(cp.key);
             const eventDetail = shipment.events.find((e) => e.status === cp.key);
             const isLatest =
               eventDetail && eventDetail === shipment.events[shipment.events.length - 1];
@@ -1090,7 +1240,7 @@ function AddressesTab({ addresses }: { addresses: Address[] }) {
             </p>
             <button
               onClick={openAddModal}
-              className="bk-btn bk-btn-primary mt-4 inline-flex"
+              className="bk-btn bk-btn-primary mt-4 rounded-2xl inline-flex px-6 py-3"
             >
               <Plus className="h-4 w-4" /> Add Your First Address
             </button>
@@ -1306,38 +1456,19 @@ function AddressesTab({ addresses }: { addresses: Address[] }) {
 }
 
 function WishlistTab({ wishlist }: { wishlist: string[] }) {
-  const items = [
-    {
-      id: "1",
-      name: "Shimla Crisp Red Apples",
-      slug: "shimla-apples",
-      price: 249,
-      unit: "1 kg pack",
-      image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400",
-      rating: 4.8,
-      inStock: true,
-    },
-    {
-      id: "4",
-      name: "Artisan Sourdough Country Loaf",
-      slug: "artisan-sourdough",
-      price: 160,
-      unit: "400 g",
-      image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400",
-      rating: 4.9,
-      inStock: true,
-    },
-    {
-      id: "2",
-      name: "Organic Farm Avocados",
-      slug: "organic-avocados",
-      price: 199,
-      unit: "2 pcs pack",
-      image: "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=400",
-      rating: 4.7,
-      inStock: true,
-    },
-  ].filter((p) => wishlist.includes(p.id));
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["products", "wishlist"],
+    queryFn: () => listProducts({ data: {} }),
+    enabled: wishlist.length > 0,
+  });
+  const items = products.filter((product) =>
+    wishlist.includes(product.id) || wishlist.includes(product.slug),
+  );
 
   return (
     <motion.div
@@ -1348,14 +1479,28 @@ function WishlistTab({ wishlist }: { wishlist: string[] }) {
     >
       <div className="bk-card rounded-2xl p-6">
         <h2 className="font-display text-xl font-bold text-bk-ink">
-          My Wishlist ({items.length})
+          My Wishlist ({wishlist.length})
         </h2>
         <p className="text-xs text-bk-muted">
           Save favorite grocery and lifestyle items to buy anytime
         </p>
       </div>
 
-      {items.length === 0 ? (
+      {isLoading ? (
+        <div className="bk-empty-state" role="status">
+          Loading your saved products...
+        </div>
+      ) : isError ? (
+        <div className="bk-empty-state" role="alert">
+          <AlertCircle className="mx-auto h-10 w-10 text-bk-error" />
+          <h3 className="mt-3 font-display text-base font-bold text-bk-ink">
+            Could not load your wishlist
+          </h3>
+          <p className="text-xs text-bk-muted">
+            {error instanceof Error ? error.message : "Please try again later."}
+          </p>
+        </div>
+      ) : wishlist.length === 0 ? (
         <div className="bk-empty-state">
           <Heart className="mx-auto h-12 w-12 text-bk-muted/40" />
           <h3 className="mt-3 font-display text-base font-bold text-bk-ink">
@@ -1363,6 +1508,22 @@ function WishlistTab({ wishlist }: { wishlist: string[] }) {
           </h3>
           <p className="text-xs text-bk-muted">
             Explore farm-fresh groceries and save your favorites
+          </p>
+          <Link
+            to="/shop"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-bk-primary px-5 py-2 text-xs font-bold text-white shadow-sm"
+          >
+            Explore Shop
+          </Link>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="bk-empty-state">
+          <AlertCircle className="mx-auto h-10 w-10 text-bk-muted/40" />
+          <h3 className="mt-3 font-display text-base font-bold text-bk-ink">
+            Saved products are unavailable
+          </h3>
+          <p className="text-xs text-bk-muted">
+            These items are no longer in the catalog. Explore the shop to find alternatives.
           </p>
           <Link
             to="/shop"
@@ -1380,13 +1541,13 @@ function WishlistTab({ wishlist }: { wishlist: string[] }) {
             >
               <div className="relative aspect-square overflow-hidden rounded-xl bg-bk-surface-alt">
                 <img
-                  src={item.image}
+                  src={item.images[0] ?? ""}
                   alt={item.name}
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                 />
                 <button
                   onClick={() => {
-                    store.toggleWishlist(item.id);
+                    store.toggleWishlist(wishlist.includes(item.id) ? item.id : item.slug);
                     toast.info("Removed from wishlist");
                   }}
                   className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-rose-500 shadow-sm backdrop-blur-xs transition hover:scale-110"
@@ -1414,7 +1575,7 @@ function WishlistTab({ wishlist }: { wishlist: string[] }) {
                     name: item.name,
                     slug: item.slug,
                     price: item.price,
-                    image: item.image,
+                    image: item.images[0] ?? "",
                     unit: item.unit,
                   });
                   toast.success("Moved to cart");
@@ -1780,7 +1941,7 @@ function ReviewsTab({ orders }: { orders: Order[] }) {
   );
 }
 
-function NotificationsTab({ notifications }: { notifications: store["notifications"] }) {
+function NotificationsTab({ notifications }: { notifications: NotificationItem[] }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}

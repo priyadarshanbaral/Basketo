@@ -89,7 +89,7 @@ export function Hero() {
             </span>
             <span className="text-slate-300">|</span>
             <span className="text-[11px] text-emerald-700 font-semibold">
-              Live in Bengaluru, Mumbai & Delhi
+              Serving Kolathia & Khandagiri Vihar, Bhubaneswar 751019
             </span>
           </motion.div>
 
@@ -181,7 +181,7 @@ export function Hero() {
             <img
               src={heroProduce}
               alt="Fresh farm produce"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-center"
             />
             {/* Scrim overlay */}
             <div className="absolute inset-0 bg-linear-to-t from-slate-950/85 via-slate-950/30 to-transparent" />
@@ -249,11 +249,18 @@ export function Hero() {
             }}
             className="relative h-full w-full"
           >
-            {/* Center Pedestal Disc */}
-            <div className="absolute left-1/2 top-1/2 h-[300px] w-[300px] md:h-[360px] md:w-[360px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-500/20 bg-linear-to-br from-emerald-100/60 via-white to-amber-50/40 shadow-xl shadow-emerald-500/10" />
+            {/* Center image disc */}
+            <div className="absolute left-1/2 top-1/2 h-[min(72vw,300px)] w-[min(72vw,300px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border-[10px] border-white/80 bg-emerald-50 shadow-2xl shadow-emerald-900/20 md:h-[340px] md:w-[340px]">
+              <img
+                src={heroProduce}
+                alt="Freshly harvested produce"
+                className="h-full w-full object-cover object-center"
+              />
+              <div className="absolute inset-0 rounded-full bg-linear-to-tr from-emerald-950/25 via-transparent to-white/20" />
+            </div>
 
             {/* Orbit Ring */}
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[360px] md:h-[420px] md:w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-emerald-400/30" />
+            <div className="pointer-events-none absolute left-1/2 top-1/2 h-[min(88vw,360px)] w-[min(88vw,360px)] md:h-[400px] md:w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-emerald-400/50 md:h-[420px] md:w-[420px]" />
 
             {/* Floating Live Badge 1: 15m Delivery */}
             <motion.div
@@ -289,37 +296,37 @@ export function Hero() {
             <motion.div
               animate={{ y: [0, -10, 0], rotate: [0, 4, 0] }}
               transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute left-12 top-24 h-32 w-32 drop-shadow-xl"
+              className="bk-hero-fruit bk-hero-fruit--apple absolute drop-shadow-xl"
             >
-              <img src={apple} alt="Fresh apple" className="h-full w-full object-contain" />
+              <img src={apple} alt="Fresh apple" className="bk-hero-fruit-image" />
             </motion.div>
 
             <motion.div
               animate={{ y: [0, 10, 0], rotate: [0, -4, 0] }}
               transition={{ duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-              className="absolute right-12 bottom-16 h-32 w-32 drop-shadow-xl"
+              className="bk-hero-fruit bk-hero-fruit--strawberry absolute drop-shadow-xl"
             >
               <img
                 src={strawberry}
-                alt="Fresh strawberry"
-                className="h-full w-full object-contain"
+                alt="Fresh strawberries"
+                className="bk-hero-fruit-image"
               />
             </motion.div>
 
             <motion.div
               animate={{ y: [0, -8, 0], rotate: [0, 6, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
-              className="absolute left-1/2 -translate-x-1/2 top-14 h-36 w-36 drop-shadow-2xl"
+              className="bk-hero-fruit bk-hero-fruit--lemon absolute drop-shadow-2xl"
             >
-              <img src={lemon} alt="Fresh lemon" className="h-full w-full object-contain" />
+              <img src={lemon} alt="Fresh lemon" className="bk-hero-fruit-image" />
             </motion.div>
 
             <motion.div
               animate={{ y: [0, 8, 0], rotate: [0, -6, 0] }}
               transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-              className="absolute left-16 bottom-8 h-28 w-28 drop-shadow-lg"
+              className="bk-hero-fruit bk-hero-fruit--carrot absolute drop-shadow-lg"
             >
-              <img src={carrot} alt="Fresh carrot" className="h-full w-full object-contain" />
+              <img src={carrot} alt="Fresh carrot" className="bk-hero-fruit-image" />
             </motion.div>
           </motion.div>
         </div>

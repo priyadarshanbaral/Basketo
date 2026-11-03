@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { BrandLogo, BRAND_NAME } from "@/components/site/BrandLogo";
+import { BRAND_NAME, BrandLogo } from "@/components/site/BrandLogo";
 import { ShieldCheck, Truck, Zap, Heart, Lock } from "lucide-react";
 
 type FooterLink = {
@@ -74,14 +74,18 @@ export function Footer() {
       {/* Main Footer Links */}
       <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 md:grid-cols-5">
         <div className="md:col-span-2">
-          <div className="flex items-center gap-2">
-            <BrandLogo size={36} />
-            <span className="font-display text-2xl font-black bg-linear-to-r from-emerald-600 via-emerald-500 to-amber-500 bg-clip-text text-transparent">
-              {BRAND_NAME}
-            </span>
-          </div>
+          <BrandLogo size="lg" />
           <p className="mt-3 max-w-sm text-xs sm:text-sm text-slate-500 leading-relaxed">
             India&apos;s most reliable quick commerce marketplace. Farm-fresh produce, pantry essentials, beauty and electronics delivered in 15 minutes.
+          </p>
+          <a
+            href="mailto:priyadarshanbaral@gmail.com"
+            className="mt-3 inline-flex text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+          >
+            Contact CEO Priyadarshan Baral
+          </a>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Kolathia, Khandagiri Vihar, Bhubaneswar 751019
           </p>
 
           <div className="mt-6">
@@ -133,8 +137,12 @@ export function Footer() {
         <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <p>© {new Date().getFullYear()} {BRAND_NAME} Technologies Private Limited. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <Link to="/p/terms" className="hover:text-slate-800">Terms</Link>
-            <Link to="/p/privacy" className="hover:text-slate-800">Privacy</Link>
+            <Link to="/p/$slug" params={{ slug: "terms" }} className="hover:text-slate-800">
+              Terms
+            </Link>
+            <Link to="/p/$slug" params={{ slug: "privacy" }} className="hover:text-slate-800">
+              Privacy
+            </Link>
             <Link to="/admin" className="text-slate-400 hover:text-amber-600 font-medium">Admin Portal</Link>
           </div>
         </div>

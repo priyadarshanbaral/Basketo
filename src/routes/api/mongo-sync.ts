@@ -1,112 +1,165 @@
-// Server API: persists the Basketo store to MongoDB and loads it back.
-// The mongodb driver only ever loads here — on the server.
-// REAL WEBSITE MODE: no demo fallbacks are ever returned. Empty DB = empty UI.
+// Server API: persists Basketo data to MongoDB.
 import { createFileRoute } from "@tanstack/react-router";
-import { collections, getMongoDb } from "@/integrations/mongodb/client";
-import type { Address, Order, Coupon, NotificationItem, Review, User } from "@/lib/flipkart-store";
+import type { Collection, Document } from "mongodb";
+import { collections, getMongoDb, type StoreDocument } from "@/integrations/mongodb/client";
+
+type StoreDataPayload = {
+  users?: Document[];
+  coupons?: Document[];
+  addresses?: Document[];
+  orders?: Document[];
+  notifications?: Document[];
+  wishlist?: string[];
+  reviews?: Document[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+async function syncRecords(
+  collection: Collection<StoreDocument>,
+  rows: Document[],
+  idField: string,
+): Promise<void> {
+  const keyedRows = rows.map((row) => {
+    const id = row[idField];
+    if (typeof id !== "string" || !id) {
+      throw new Error(`MongoDB record is missing its ${idField}.`);
+    }
+    return { id, row };
+  });
+
+  await collection.deleteMany({ _id: { $nin: keyedRows.map(({ id }) => id) } });
+  await Promise.all(
+    keyedRows.map(({ id, row }) =>
+      collection.replaceOne({ _id: id }, { ...row, _id: id }, { upsert: true }),
+    ),
+  );
+}
 
 export const Route = createFileRoute("/api/mongo-sync")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const url = new URL(request.url);
-        const userId = url.searchParams.get("userId") || "";
+        try {
+          await getMongoDb();
+          const c = collections();
+          const userId = new URL(request.url).searchParams.get("userId") || "";
 
-        await getMongoDb();
-        const c = collections();
+          const [legacyAccounts, registeredUsers, coupons] = await Promise.all([
+            (await c.users()).find({ id: { $exists: true } }).toArray(),
+            (await c.registeredUsers()).find({}).toArray(),
+            (await c.coupons()).find({}).toArray(),
+          ]);
 
-        const pickAll = async (name: string): Promise<any[]> => {
-          try {
-            const col = await ((await c) as any)[name]();
-            return (await col.find({}).toArray()) || [];
-          } catch {
-            return [];
+          const usersById = new Map<string, Document>();
+          for (const user of [...legacyAccounts, ...registeredUsers]) {
+            if (typeof user.id === "string") usersById.set(user.id, user);
           }
-        };
 
-        const users = await pickAll("users");
-        const coupons = await pickAll("coupons");
+          let userData: Document | null = null;
+          if (userId) {
+            const userDataCollection = await c.userData();
+            userData =
+              (await userDataCollection.findOne({ _id: `data_${userId}` })) ??
+              (await (await c.users()).findOne({ _id: `data_${userId}` }));
+          }
 
-        if (!userId) {
           return Response.json({
-            users,
+            users: [...usersById.values()],
             coupons,
-            addresses: [] as Address[],
-            orders: [] as Order[],
-            notifications: [] as NotificationItem[],
-            wishlist: [] as string[],
-            reviews: [] as Review[],
+            addresses: userData?.addresses ?? [],
+            orders: userData?.orders ?? [],
+            notifications: userData?.notifications ?? [],
+            wishlist: userData?.wishlist ?? [],
+            reviews: userData?.reviews ?? [],
           });
+        } catch (error) {
+          console.error("[mongo-sync] Load failed:", error);
+          const message = error instanceof Error ? error.message : "MongoDB load failed.";
+          return Response.json({ ok: false, error: message }, { status: 503 });
         }
-
-        // Per-user data lives under a single namespaced document.
-        const col = await (await c).users();
-        const doc = await col.findOne({ _id: `data_${userId}` } as any);
-        return Response.json({
-          users,
-          coupons,
-          addresses: doc?.addresses ?? [],
-          orders: doc?.orders ?? [],
-          notifications: doc?.notifications ?? [],
-          wishlist: doc?.wishlist ?? [],
-          reviews: doc?.reviews ?? [],
-        });
       },
 
       POST: async ({ request }) => {
-        const body = await request.json();
-        const { userId, data } = body as {
-          userId: string;
-          data: {
-            users?: User[];
-            coupons?: Coupon[];
-            addresses?: Address[];
-            orders?: Order[];
-            notifications?: NotificationItem[];
-            wishlist?: string[];
-            reviews?: Review[];
-          };
-        };
-        if (!userId) return Response.json({ ok: false }, { status: 400 });
-
-        await getMongoDb();
-        const c = collections();
-
-        const save = async (name: string, rows: any[] | undefined) => {
-          if (!rows) return;
-          try {
-            const col = await ((await c) as any)[name]();
-            await col.deleteMany({});
-            if (rows.length) await col.insertMany(rows);
-          } catch (err) {
-            console.warn(`[mongo] save ${name} failed`, err);
-          }
-        };
-
-        if (data.users) await save("users", data.users);
-        if (data.coupons) await save("coupons", data.coupons);
-
         try {
-          const col = await (await c).users();
-          await col.replaceOne(
-            { _id: `data_${userId}` } as any,
-            {
-              _id: `data_${userId}`,
-              userId,
-              addresses: data.addresses ?? [],
-              orders: data.orders ?? [],
-              notifications: data.notifications ?? [],
-              wishlist: data.wishlist ?? [],
-              reviews: data.reviews ?? [],
-              updatedAt: new Date().toISOString(),
-            },
-            { upsert: true },
-          );
-        } catch (err) {
-          console.warn("[mongo] per-user persist failed", err);
-        }
+          const body: unknown = await request.json();
+          if (!isRecord(body) || typeof body.userId !== "string" || !body.userId.trim()) {
+            return Response.json({ ok: false, error: "A valid userId is required." }, { status: 400 });
+          }
+          if (!isRecord(body.data)) {
+            return Response.json({ ok: false, error: "Store data is required." }, { status: 400 });
+          }
 
-        return Response.json({ ok: true });
+          const data = body.data;
+          const arrayFields = [
+            "users",
+            "coupons",
+            "addresses",
+            "orders",
+            "notifications",
+            "wishlist",
+            "reviews",
+          ];
+          for (const field of arrayFields) {
+            if (data[field] !== undefined && !Array.isArray(data[field])) {
+              return Response.json(
+                { ok: false, error: `${field} must be an array.` },
+                { status: 400 },
+              );
+            }
+          }
+          if (
+            Array.isArray(data.wishlist) &&
+            data.wishlist.some((productId) => typeof productId !== "string")
+          ) {
+            return Response.json(
+              { ok: false, error: "Wishlist items must be product IDs." },
+              { status: 400 },
+            );
+          }
+
+          const userId = body.userId.trim();
+          const storeData = data as StoreDataPayload;
+          await getMongoDb();
+          const c = collections();
+          const operations: Promise<unknown>[] = [];
+
+          if (storeData.users) {
+            operations.push(
+              syncRecords(await c.registeredUsers(), storeData.users, "id"),
+            );
+          }
+          if (storeData.coupons) {
+            operations.push(syncRecords(await c.coupons(), storeData.coupons, "id"));
+          }
+
+          const userDataCollection = await c.userData();
+          operations.push(
+            userDataCollection.replaceOne(
+              { _id: `data_${userId}` },
+              {
+                _id: `data_${userId}`,
+                userId,
+                addresses: storeData.addresses ?? [],
+                orders: storeData.orders ?? [],
+                notifications: storeData.notifications ?? [],
+                wishlist: storeData.wishlist ?? [],
+                reviews: storeData.reviews ?? [],
+                updatedAt: new Date().toISOString(),
+              },
+              { upsert: true },
+            ),
+          );
+          await Promise.all(operations);
+
+          return Response.json({ ok: true });
+        } catch (error) {
+          console.error("[mongo-sync] Save failed:", error);
+          const message = error instanceof Error ? error.message : "MongoDB save failed.";
+          return Response.json({ ok: false, error: message }, { status: 503 });
+        }
       },
     },
   },

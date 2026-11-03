@@ -32,6 +32,10 @@ const DEFAULT_PAGES: Record<string, SitePage> = {
         heading: "Speed with Care",
         body: "Our hyperlocal micro-fulfillment centers ensure lightning-fast deliveries without compromising on produce quality or product integrity.",
       },
+      {
+        heading: "Founder & CEO",
+        body: "Basketo is led by Priyadarshan Baral.",
+      },
     ],
   },
   careers: {
@@ -119,7 +123,11 @@ const DEFAULT_PAGES: Record<string, SitePage> = {
       },
       {
         heading: "Headquarters",
-        body: "Basketo Technologies Private Limited, Indiranagar 100 Feet Road, Bengaluru, Karnataka 560038, India.",
+        body: "Kolathia, Khandagiri Vihar, Bhubaneswar, Odisha 751019, India.",
+      },
+      {
+        heading: "Leadership & Business Inquiries",
+        body: "Contact Basketo CEO Priyadarshan Baral.",
       },
     ],
   },
@@ -172,6 +180,20 @@ const DEFAULT_PAGES: Record<string, SitePage> = {
   },
 };
 
+function withCompanyContact(page: SitePage): SitePage {
+  if (page.slug !== "about" && page.slug !== "contact") return page;
+  const sectionHeading = page.slug === "about" ? "Founder & CEO" : "Leadership & Business Inquiries";
+  const sections = page.sections.filter((section) => section.heading !== sectionHeading);
+  sections.push({
+    heading: sectionHeading,
+    body:
+      page.slug === "about"
+        ? "Basketo is led by Priyadarshan Baral."
+        : "Contact Basketo CEO Priyadarshan Baral.",
+  });
+  return { ...page, sections };
+}
+
 function publicClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
@@ -197,13 +219,17 @@ export const getPage = createServerFn({ method: "GET" })
           .eq("slug", data.slug)
           .maybeSingle();
         if (row) {
-          return { ...row, sections: (row.sections as PageSection[]) ?? [] };
+          return withCompanyContact({
+            ...row,
+            sections: (row.sections as PageSection[]) ?? [],
+          });
         }
       } catch (err) {
         console.warn("[Pages] Supabase query failed, falling back to default:", err);
       }
     }
-    return DEFAULT_PAGES[data.slug] ?? null;
+    const page = DEFAULT_PAGES[data.slug];
+    return page ? withCompanyContact(page) : null;
   });
 
 export const listPages = createServerFn({ method: "GET" }).handler(
@@ -217,15 +243,17 @@ export const listPages = createServerFn({ method: "GET" }).handler(
           .order("group_name")
           .order("sort_order");
         if (data && data.length > 0) {
-          return data.map((r) => ({
-            ...r,
-            sections: (r.sections as PageSection[]) ?? [],
-          }));
+          return data.map((r) =>
+            withCompanyContact({
+              ...r,
+              sections: (r.sections as PageSection[]) ?? [],
+            }),
+          );
         }
       } catch (err) {
         console.warn("[Pages] Supabase query failed, falling back to defaults:", err);
       }
     }
-    return Object.values(DEFAULT_PAGES);
+    return Object.values(DEFAULT_PAGES).map(withCompanyContact);
   },
 );

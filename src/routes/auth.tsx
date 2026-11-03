@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
-  Leaf,
   ShieldCheck,
   Mail,
   Phone,
@@ -16,8 +15,12 @@ import {
 import { store } from "@/lib/flipkart-store";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/site/BrandLogo";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect_to: typeof search.redirect_to === "string" ? search.redirect_to : undefined,
+  }),
   head: () => ({ meta: [{ title: "Sign in & Register — Basketo" }] }),
   component: AuthPage,
 });
@@ -334,23 +337,12 @@ function AuthPage() {
     startOtpFlow(email);
   }
 
-  function quickDemoLogin() {
-    // Demo login removed — real website mode. Users must sign up / sign in.
-    toast.info("Please create your account or sign in to continue.");
-    setMode("signup");
-  }
-
   return (
-    <div className="grid min-h-screen lg:grid-cols-2 bg-background">
+    <div className="bk-auth-page grid min-h-screen lg:grid-cols-2 bg-background">
       {/* Left visual brand hero */}
-      <div className="relative hidden gradient-hero lg:flex flex-col justify-between p-12 border-r border-border/80">
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-amber-500 shadow-md shadow-emerald-500/20">
-            <Leaf className="h-6 w-6 text-white" />
-          </div>
-          <span className="font-display text-2xl font-black tracking-tight text-foreground">
-            Basketo
-          </span>
+      <div className="bk-auth-brand relative hidden gradient-hero lg:flex flex-col justify-between p-12 border-r border-border/80">
+        <Link to="/" className="inline-flex" aria-label="Basketo home">
+          <BrandLogo size="lg" />
         </Link>
 
         <div className="max-w-md space-y-4">
@@ -389,34 +381,16 @@ function AuthPage() {
       </div>
 
       {/* Right form container */}
-      <div className="flex flex-col items-center justify-center p-4 sm:p-12 min-h-screen">
-        <div className="w-full max-w-md space-y-5">
+      <div className="bk-auth-form flex flex-col items-center justify-center p-4 sm:p-12 min-h-screen">
+        <div className="bk-auth-panel w-full max-w-md space-y-5">
           {/* Mobile Brand Link */}
           <Link
             to="/"
-            className="lg:hidden inline-flex items-center gap-2 text-slate-900 hover:opacity-90"
+            className="lg:hidden hover:opacity-90 inline-block"
+            aria-label="Basketo home"
           >
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-linear-to-tr from-emerald-500 to-amber-500 text-white shadow-xs">
-              <Leaf className="h-4 w-4" />
-            </div>
-            <span className="font-display text-xl font-black tracking-tight text-slate-900">
-              Basketo
-            </span>
+            <BrandLogo size="md" />
           </Link>
-
-          {/* Create-account prompt banner */}
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <span className="font-semibold text-emerald-900 dark:text-emerald-200">
-              Sign in to start 15-minute delivery:
-            </span>
-            <button
-              type="button"
-              onClick={() => quickDemoLogin()}
-              className="rounded-full bg-linear-to-r from-emerald-600 to-emerald-500 px-3.5 py-1 text-xs font-bold text-white shadow-xs hover:opacity-90 active:scale-95 self-end sm:self-auto cursor-pointer"
-            >
-              Create Account →
-            </button>
-          </div>
 
           <AnimatePresence mode="wait">
             {/* 1. SIGN IN MODE */}

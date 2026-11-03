@@ -196,6 +196,15 @@ function ProductPage() {
   }
 
   function handleToggleWishlist() {
+    if (!user) {
+      navigate({
+        to: "/auth",
+        search: { redirect_to: `/product/${slug}` },
+      });
+      toast.info("Please sign in to save items to your wishlist");
+      return;
+    }
+
     const added = store.toggleWishlist(product.id);
     if (added) {
       toast.success(`Saved ${product.name} to wishlist`);

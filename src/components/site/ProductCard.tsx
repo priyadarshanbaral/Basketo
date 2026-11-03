@@ -19,13 +19,13 @@ export type Product = {
 };
 
 export function ProductCard({ product, index = 0 }: { product: Product; index?: number }) {
-  const currentStore = useSyncExternalStore(
+  useSyncExternalStore(
     (cb) => store.subscribe(cb),
-    () => store,
-    () => store,
+    store.getSnapshotVersion,
+    store.getSnapshotVersion,
   );
-  const user = currentStore.currentUser;
-  const isWishlisted = currentStore.isWishlisted(product.id);
+  const user = store.currentUser;
+  const isWishlisted = store.isWishlisted(product.id);
   const { items } = useCart();
   const cartItem = items.find((i) => i.id === product.id);
   const qtyInCart = cartItem?.quantity || 0;
@@ -113,9 +113,9 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
   const isLowStock = product.stock > 0 && product.stock <= 8;
 
   return (
-    <article className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/70 hover:shadow-xl">
+    <article className="bk-premium-product-card group relative flex h-full min-h-[21rem] flex-col justify-between overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-2.5 sm:p-3 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/70 hover:shadow-xl">
       {/* Top Image Container (Perfect square framing) */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-slate-100">
+      <div className="bk-product-image-frame relative aspect-square w-full shrink-0 overflow-hidden rounded-xl bg-slate-50">
         {/* Discount Badge */}
         {off > 0 && (
           <span className="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10 inline-flex items-center gap-0.5 rounded-full bg-linear-to-r from-amber-500 to-rose-500 px-2 py-0.5 text-[10px] sm:text-[11px] font-black uppercase tracking-tight text-white shadow-xs">
@@ -152,10 +152,12 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
             src={imgSrc}
             alt={product.name}
             loading="lazy"
+            width={600}
+            height={600}
             onError={() =>
               setImgSrc("https://images.unsplash.com/photo-1542838132-92c53300491e?w=600&q=80")
             }
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-108"
+            className="bk-product-image transition-transform duration-500 group-hover:scale-105"
           />
         </Link>
       </div>
@@ -178,7 +180,7 @@ export function ProductCard({ product, index = 0 }: { product: Product; index?: 
           <Link
             to="/product/$slug"
             params={{ slug: product.slug }}
-            className="mt-1.5 line-clamp-2 h-9 sm:h-10 text-xs sm:text-sm font-bold text-slate-900 transition-colors group-hover:text-emerald-700 leading-snug"
+            className="mt-1.5 line-clamp-2 min-h-9 sm:min-h-10 text-xs sm:text-sm font-bold text-slate-900 transition-colors group-hover:text-emerald-700 leading-snug"
             title={product.name}
           >
             {product.name}

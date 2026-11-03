@@ -44,9 +44,11 @@ export const Route = createFileRoute("/")({
       },
     ],
   }),
-  loader: ({ context }) => {
-    context.queryClient.ensureQueryData(catsQO());
-    context.queryClient.ensureQueryData(featuredQO());
+  loader: async ({ context }) => {
+    await Promise.all([
+      context.queryClient.ensureQueryData(catsQO()),
+      context.queryClient.ensureQueryData(featuredQO()),
+    ]);
   },
   component: HomePage,
 });
@@ -85,7 +87,7 @@ const VOUCHERS = [
 const TESTIMONIALS = [
   {
     name: "Pooja Sharma",
-    city: "Bengaluru",
+    city: "Bhubaneswar",
     rating: 5,
     comment:
       "Ordered organic spinach and strawberries at 8:05 AM, rider arrived at 8:18 AM! Crisp leaves, zero bruising.",
@@ -169,10 +171,13 @@ function HomePage() {
       "bk-24",
       "bk-31",
       "bk-32",
+      "bk-34",
+      "bk-35",
+      "bk-36",
     ].includes(p.id),
   );
   const dairyAndBakeryPicks = CURATED_BASKETO_PRODUCTS.filter((p) =>
-    ["bk-3", "bk-4", "bk-6", "bk-7", "bk-8", "bk-21", "bk-22"].includes(p.id),
+    ["bk-3", "bk-4", "bk-6", "bk-7", "bk-8", "bk-21", "bk-22", "bk-33"].includes(p.id),
   );
   const pantryAndDryFruitsPicks = CURATED_BASKETO_PRODUCTS.filter((p) =>
     [
@@ -189,11 +194,19 @@ function HomePage() {
       "bk-28",
       "bk-29",
       "bk-30",
+      "bk-37",
+      "bk-38",
+      "bk-39",
+      "bk-40",
+      "bk-41",
+      "bk-42",
+      "bk-43",
+      "bk-44",
     ].includes(p.id),
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-28 sm:pb-0 overflow-x-hidden">
+    <div className="bk-storefront min-h-screen bg-slate-50/50 pb-28 sm:pb-0 overflow-x-hidden">
       <Navbar />
       <Hero />
 
@@ -332,7 +345,7 @@ function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4">
-          {fruitAndVeggiePicks.slice(0, 4).map((p, i) => (
+          {fruitAndVeggiePicks.slice(0, 8).map((p, i) => (
             <ProductCard key={p.id} product={p as Product} index={i} />
           ))}
         </div>
@@ -475,6 +488,10 @@ function HomePage() {
               { id: "beauty", label: "💄 Beauty" },
               { id: "smartphones", label: "📱 Mobiles" },
               { id: "kitchen-accessories", label: "🍽️ Kitchen" },
+              { id: "fragrances", label: "🌸 Fragrances" },
+              { id: "laptops", label: "💻 Laptops" },
+              { id: "home-decoration", label: "🪴 Home" },
+              { id: "womens-dresses", label: "👗 Fashion" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -494,7 +511,7 @@ function HomePage() {
 
         {/* Product Grid (2 cols mobile, 3 cols tablet, 4 cols laptop, 5 cols desktop) */}
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-          {filteredFeatured.slice(0, 15).map((p, i) => (
+          {filteredFeatured.slice(0, 24).map((p, i) => (
             <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 15 }}
@@ -627,7 +644,7 @@ function HomePage() {
             Loved by 50,000+ Indian Households
           </h3>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Here is what verified shoppers across Bengaluru, Mumbai & Delhi say about our 15-minute
+            Here is what verified shoppers in Bhubaneswar say about our 15-minute
             delivery.
           </p>
         </div>

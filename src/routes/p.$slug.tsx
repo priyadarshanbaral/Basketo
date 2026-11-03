@@ -89,9 +89,31 @@ function ContentPage() {
               className="rounded-3xl border border-border bg-card p-6 md:p-8"
             >
               <h2 className="font-display text-xl font-bold md:text-2xl">{s.heading}</h2>
-              <p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">
-                {s.body}
-              </p>
+              {s.heading === "Founder & CEO" ? (
+                <div className="mt-3 space-y-2 leading-relaxed text-muted-foreground">
+                  <p>{s.body}</p>
+                  <a
+                    className="inline-flex font-semibold text-emerald-700 underline-offset-4 hover:underline"
+                    href="mailto:priyadarshanbaral@gmail.com"
+                  >
+                    priyadarshanbaral@gmail.com
+                  </a>
+                </div>
+              ) : s.heading === "Leadership & Business Inquiries" ? (
+                <div className="mt-3 space-y-2 leading-relaxed text-muted-foreground">
+                  <p>{s.body}</p>
+                  <a
+                    className="inline-flex font-semibold text-emerald-700 underline-offset-4 hover:underline"
+                    href="mailto:priyadarshanbaral@gmail.com"
+                  >
+                    priyadarshanbaral@gmail.com
+                  </a>
+                </div>
+              ) : (
+                <p className="mt-3 whitespace-pre-line leading-relaxed text-muted-foreground">
+                  {s.body}
+                </p>
+              )}
             </motion.section>
           ))}
         </div>

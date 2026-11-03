@@ -32,6 +32,16 @@ The project uses **TanStack Router** for type-safe routing.
 
 ## 🔌 APIs & Data Sources
 
+### 🗄️ MongoDB: Persistent Store Data
+
+Copy `.env.example` to `.env`, set `MONGODB_URI` to your MongoDB connection string, and restart the server. The database name can be included in the URI path; otherwise Basketo uses the `basketo` database. MongoDB connection or write errors are returned to the dashboard instead of being reported as successful in-memory saves.
+
+The server stores registered accounts in `registered_users` and per-account orders, addresses, wishlist items, notifications, and reviews in `user_data`. Existing per-account documents in the legacy `users` collection are read as a migration fallback.
+
+### 🤖 AI Shopping Assistant
+
+Set either `GEMINI_API_KEY` or `LOVABLE_API_KEY` in the server `.env` file and restart the server. The key must remain server-side; do not use a `VITE_` prefix or commit `.env`. The assistant uses Gemini for general answers, Basketo catalog searches, and questions about the project's verified routes, features, data flow, and setup. Its project guide is maintained in `src/routes/api/chat.ts`. Catalog recommendations can use the built-in Basketo products when the external catalog API is unavailable.
+
 ### 📦 Product Data: DummyJSON API
 
 The storefront doesn't use a local database for products; it fetches real-time data from:

@@ -322,62 +322,73 @@ export function createShipmentTimeline(
 // through /api/mongo-sync so the client bundle stays clean.
 // -------------------------------------------------------------
 
-async function loadCollection<T>(name: string, fallback: T): Promise<T> {
-  try {
-    const id = StoreManager.instance?.currentUser?.id || "guest";
-    const res = await fetch(`/api/mongo-sync?userId=${encodeURIComponent(id)}`);
-    if (!res.ok) return fallback;
-    const json = await res.json();
-    return (json[name] ?? fallback) as T;
-  } catch (err) {
-    console.warn(`[mongo] load ${name} failed, using fallback`, err);
-    return fallback;
+async function loadCollection<T>(name: string, fallback: T, userId: string): Promise<T> {
+  const id = userId || "guest";
+  const res = await fetch(`/api/mongo-sync?userId=${encodeURIComponent(id)}`);
+  const json = (await res.json()) as { [key: string]: unknown; error?: string };
+  if (!res.ok) {
+    throw new Error(json.error || `MongoDB load failed for ${name} (${res.status}).`);
   }
+  return (json[name] ?? fallback) as T;
 }
 
-async function saveCollection(name: string, rows: unknown[]): Promise<void> {
-  const s = StoreManager.instance;
-  if (!s) return;
-  // Guests (pre-signup) persist under the shared "guest" bucket so account
-  // registration still reaches MongoDB before any user session exists.
-  const id = s.currentUser?.id || "guest";
-  try {
-    await fetch("/api/mongo-sync", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: id,
-        data: {
-          users: s.registeredUsers,
-          coupons: s.coupons,
-          addresses: s.addresses,
-          orders: s.orders,
-          notifications: s.notifications,
-          wishlist: s.wishlist,
-          reviews: s.reviews,
-          [name]: rows,
-        },
-      }),
-    });
-  } catch (err) {
-    console.warn(`[mongo] save ${name} failed`, err);
+type StoreSnapshot = {
+  userId: string;
+  data: {
+    users: User[];
+    coupons: Coupon[];
+    addresses: Address[];
+    orders: Order[];
+    notifications: NotificationItem[];
+    wishlist: string[];
+    reviews: Review[];
+  };
+};
+
+function snapshotStore(s: StoreManager): StoreSnapshot {
+  return {
+    userId: s.currentUser?.id || "guest",
+    data: {
+      users: s.registeredUsers,
+      coupons: s.coupons,
+      addresses: s.addresses,
+      orders: s.orders,
+      notifications: s.notifications,
+      wishlist: s.wishlist,
+      reviews: s.reviews,
+    },
+  };
+}
+
+async function saveStore(snapshot: StoreSnapshot): Promise<void> {
+  const response = await fetch("/api/mongo-sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(snapshot),
+  });
+  const result = (await response.json()) as { ok?: boolean; error?: string };
+  if (!response.ok || !result.ok) {
+    throw new Error(result.error || `MongoDB save failed (${response.status}).`);
   }
 }
 
 /** Persist the whole store to MongoDB (debounced). */
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let persistQueue: Promise<void> = Promise.resolve();
 function schedulePersist(s: StoreManager) {
   if (typeof window === "undefined") return;
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     persistTimer = null;
-    saveCollection("users", s.registeredUsers);
-    saveCollection("coupons", s.coupons);
-    saveCollection("addresses", s.addresses);
-    saveCollection("orders", s.orders);
-    saveCollection("notifications", s.notifications);
-    saveCollection("wishlist", s.wishlist);
-    saveCollection("reviews", s.reviews);
+    const snapshot = snapshotStore(s);
+    persistQueue = persistQueue
+      .then(() => saveStore(snapshot))
+      .then(() => s.setPersistenceError(null))
+      .catch((error: unknown) => {
+        console.error("[mongo] Store persistence failed:", error);
+        const message = error instanceof Error ? error.message : "MongoDB save failed.";
+        s.setPersistenceError(message);
+      });
   }, 400);
 }
 
@@ -414,8 +425,13 @@ export class StoreManager {
   reviews: Review[] = [];
   /** Every account ever registered. Used to block duplicate emails/phones. */
   registeredUsers: User[] = [];
+  persistenceError: string | null = null;
 
   private listeners: Set<() => void> = new Set();
+  private hydrationVersion = 0;
+  private snapshotVersion = 0;
+
+  getSnapshotVersion = (): number => this.snapshotVersion;
 
   private constructor() {
     this.init();
@@ -430,11 +446,18 @@ export class StoreManager {
 
   /** Hydrate the in-memory store from MongoDB (via the server API). Safe to call repeatedly. */
   async hydrateFromMongo(): Promise<void> {
-    const id = this.currentUser?.id;
+    const userId = this.currentUser?.id;
+    const hydrationVersion = ++this.hydrationVersion;
 
+    try {
     // Shared collections (coupons, registered users) load fully.
-    this.coupons = await loadCollection("coupons", DEFAULT_COUPONS);
-    const mongoUsers = await loadCollection("users", DEFAULT_USERS);
+    const [coupons, mongoUsers] = await Promise.all([
+      loadCollection("coupons", DEFAULT_COUPONS, userId || "guest"),
+      loadCollection("users", DEFAULT_USERS, userId || "guest"),
+    ]);
+    if (hydrationVersion !== this.hydrationVersion || userId !== this.currentUser?.id) return;
+
+    this.coupons = coupons;
     // Merge: never let a Mongo hydration wipe accounts registered locally in
     // this browser (e.g. a signup that happened moments ago).
     const local = getStorage<User[]>("registered_users", []);
@@ -445,35 +468,51 @@ export class StoreManager {
     this.registeredUsers = [...merged.values()];
     setStorage("registered_users", this.registeredUsers);
 
-    if (!id) {
+    if (!userId) {
       this.addresses = [];
       this.orders = [];
       this.notifications = [];
       this.wishlist = [];
       this.reviews = [];
+      this.persistenceError = null;
+      this.notify();
       return;
     }
 
-    {
-      // Per-user collections are stored under a namespaced key inside a
-      // single document so they survive reloads and stay isolated.
-      this.addresses = await loadCollection("addresses", []);
-      this.orders = await loadCollection("orders", []);
-      this.notifications = await loadCollection("notifications", [
+    // Per-user collections are stored under a namespaced key inside a
+    // single document so they survive reloads and stay isolated.
+    const [addresses, orders, notifications, wishlist, reviews] = await Promise.all([
+      loadCollection("addresses", [], userId),
+      loadCollection("orders", [], userId),
+      loadCollection<NotificationItem[]>("notifications", [
         {
           id: `ntf-welcome-${Date.now()}`,
-          userId: id,
+          userId,
           title: "Welcome to Basketo!",
           message: "Your account is ready. Start shopping fresh groceries delivered in 15 minutes.",
           type: "auth",
           read: false,
           createdAt: new Date().toISOString(),
         },
-      ]);
-      this.wishlist = await loadCollection("wishlist", []);
-      this.reviews = await loadCollection("reviews", []);
-    }
+      ], userId),
+      loadCollection("wishlist", [], userId),
+      loadCollection("reviews", [], userId),
+    ]);
+    if (hydrationVersion !== this.hydrationVersion || userId !== this.currentUser?.id) return;
+
+    this.addresses = addresses;
+    this.orders = orders;
+    this.notifications = notifications;
+    this.wishlist = wishlist;
+    this.reviews = reviews;
+    this.persistenceError = null;
     this.notify();
+    } catch (error) {
+      if (hydrationVersion !== this.hydrationVersion || userId !== this.currentUser?.id) return;
+      console.error("[mongo] Store hydration failed:", error);
+      this.persistenceError = error instanceof Error ? error.message : "MongoDB load failed.";
+      this.notify();
+    }
   }
 
   private init() {
@@ -494,7 +533,13 @@ export class StoreManager {
   }
 
   private notify() {
+    this.snapshotVersion += 1;
     this.listeners.forEach((fn) => fn());
+  }
+
+  setPersistenceError(message: string | null) {
+    this.persistenceError = message;
+    this.notify();
   }
 
   /** Persist the current in-memory state to MongoDB (debounced). */

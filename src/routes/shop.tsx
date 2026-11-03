@@ -42,11 +42,19 @@ function ShopPage() {
 
   const [sortBy, setSortBy] = useState<SortOption>("featured");
   const [onlySale, setOnlySale] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minRating, setMinRating] = useState("");
 
   let filtered = products.filter((p) => {
     if (q && !p.name.toLowerCase().includes(q.toLowerCase())) return false;
     if (category && p.category_id !== category) return false;
     if (onlySale && !p.is_on_sale) return false;
+    if (inStockOnly && p.stock <= 0) return false;
+    if (minPrice && p.price < Number(minPrice)) return false;
+    if (maxPrice && p.price > Number(maxPrice)) return false;
+    if (minRating && p.rating < Number(minRating)) return false;
     return true;
   });
 
@@ -67,7 +75,7 @@ function ShopPage() {
   const activeCategory = categories.find((c) => c.slug === category);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-28 sm:pb-0">
+    <div className="bk-storefront min-h-screen bg-slate-50/50 pb-28 sm:pb-0">
       <Navbar />
 
       {/* Header Banner */}
@@ -130,8 +138,9 @@ function ShopPage() {
         </div>
 
         {/* Filters and Sort Toolbar */}
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="bk-shop-filters mt-6 space-y-3 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs sm:p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
               {filtered.length} Items Found
             </span>
@@ -163,10 +172,9 @@ function ShopPage() {
               <Tag className="h-3 w-3" />
               On Sale Only
             </button>
-          </div>
+            </div>
 
-          {/* Sort By Dropdown */}
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
             <label htmlFor="shop-sort" className="text-xs font-semibold text-slate-500 flex items-center gap-1">
               <ArrowUpDown className="h-3.5 w-3.5" /> Sort:
             </label>
@@ -182,6 +190,76 @@ function ShopPage() {
               <option value="rating">Highest Rated (★)</option>
               <option value="discount">Biggest Discount (%)</option>
             </select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3">
+            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            Min price
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              placeholder="₹0"
+              aria-label="Minimum product price"
+              className="h-9 w-24 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+            />
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            Max price
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              placeholder="No limit"
+              aria-label="Maximum product price"
+              className="h-9 w-24 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+            />
+            </label>
+            <label className="flex flex-col gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            Minimum rating
+            <select
+              value={minRating}
+              onChange={(e) => setMinRating(e.target.value)}
+              aria-label="Minimum product rating"
+              className="h-9 rounded-xl border border-slate-200 bg-slate-50 px-2.5 text-xs font-semibold text-slate-800 outline-none focus:border-emerald-500"
+            >
+              <option value="">Any rating</option>
+              <option value="4">4★ and above</option>
+              <option value="4.5">4.5★ and above</option>
+            </select>
+            </label>
+            <button
+            type="button"
+            aria-pressed={inStockOnly}
+            onClick={() => setInStockOnly((value) => !value)}
+            className={`h-9 rounded-xl border px-3 text-xs font-bold transition ${
+              inStockOnly
+                ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                : "border-slate-200 bg-white text-slate-600 hover:border-emerald-400"
+            }`}
+            >
+            In stock
+            </button>
+            {(minPrice || maxPrice || minRating || inStockOnly || onlySale) && (
+            <button
+              type="button"
+              onClick={() => {
+                setMinPrice("");
+                setMaxPrice("");
+                setMinRating("");
+                setInStockOnly(false);
+                setOnlySale(false);
+              }}
+              className="h-9 px-2 text-xs font-bold text-rose-600 hover:text-rose-700"
+            >
+              Clear filters
+            </button>
+            )}
           </div>
         </div>
 

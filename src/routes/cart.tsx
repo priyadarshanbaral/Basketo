@@ -32,15 +32,15 @@ function CartPage() {
   const { items, subtotal, count } = useCart();
   const navigate = useNavigate();
 
-  const currentStore = useSyncExternalStore(
+  useSyncExternalStore(
     (cb) => store.subscribe(cb),
-    () => store,
-    () => store,
+    store.getSnapshotVersion,
+    store.getSnapshotVersion,
   );
 
-  const user = currentStore.currentUser;
-  const addresses = currentStore.addresses;
-  const coupons = currentStore.coupons;
+  const user = store.currentUser;
+  const addresses = store.addresses;
+  const coupons = store.coupons;
 
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedAddressId, setSelectedAddressId] = useState<string>(
