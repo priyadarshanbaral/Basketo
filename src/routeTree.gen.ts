@@ -17,6 +17,7 @@ import { Route as CartRouteImport } from './routes/cart'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as ApiAdminAnalyticsRouteImport } from './routes/api/admin-analytics'
+import { Route as ApiAdminOrdersRouteImport } from './routes/api/admin-orders'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiMongoSyncRouteImport } from './routes/api/mongo-sync'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
@@ -62,6 +63,11 @@ const ApiAdminAnalyticsRoute = ApiAdminAnalyticsRouteImport.update({
   path: '/api/admin-analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminOrdersRoute = ApiAdminOrdersRouteImport.update({
+  id: '/api/admin-orders',
+  path: '/api/admin-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/api/admin-analytics': typeof ApiAdminAnalyticsRoute
+  '/api/admin-orders': typeof ApiAdminOrdersRoute
   '/api/chat': typeof ApiChatRoute
   '/api/mongo-sync': typeof ApiMongoSyncRoute
   '/p/$slug': typeof PSlugRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/api/admin-analytics': typeof ApiAdminAnalyticsRoute
+  '/api/admin-orders': typeof ApiAdminOrdersRoute
   '/api/chat': typeof ApiChatRoute
   '/api/mongo-sync': typeof ApiMongoSyncRoute
   '/p/$slug': typeof PSlugRoute
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/orders': typeof OrdersRoute
   '/shop': typeof ShopRoute
   '/api/admin-analytics': typeof ApiAdminAnalyticsRoute
+  '/api/admin-orders': typeof ApiAdminOrdersRoute
   '/api/chat': typeof ApiChatRoute
   '/api/mongo-sync': typeof ApiMongoSyncRoute
   '/p/$slug': typeof PSlugRoute
@@ -137,6 +146,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/api/admin-analytics'
+    | '/api/admin-orders'
     | '/api/chat'
     | '/api/mongo-sync'
     | '/p/$slug'
@@ -151,6 +161,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/api/admin-analytics'
+    | '/api/admin-orders'
     | '/api/chat'
     | '/api/mongo-sync'
     | '/p/$slug'
@@ -165,6 +176,7 @@ export interface FileRouteTypes {
     | '/orders'
     | '/shop'
     | '/api/admin-analytics'
+    | '/api/admin-orders'
     | '/api/chat'
     | '/api/mongo-sync'
     | '/p/$slug'
@@ -180,6 +192,7 @@ export interface RootRouteChildren {
   OrdersRoute: typeof OrdersRoute
   ShopRoute: typeof ShopRoute
   ApiAdminAnalyticsRoute: typeof ApiAdminAnalyticsRoute
+  ApiAdminOrdersRoute: typeof ApiAdminOrdersRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiMongoSyncRoute: typeof ApiMongoSyncRoute
   PSlugRoute: typeof PSlugRoute
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin-orders': {
+      id: '/api/admin-orders'
+      path: '/api/admin-orders'
+      fullPath: '/api/admin-orders'
+      preLoaderRoute: typeof ApiAdminOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -284,6 +304,7 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersRoute: OrdersRoute,
   ShopRoute: ShopRoute,
   ApiAdminAnalyticsRoute: ApiAdminAnalyticsRoute,
+  ApiAdminOrdersRoute: ApiAdminOrdersRoute,
   ApiChatRoute: ApiChatRoute,
   ApiMongoSyncRoute: ApiMongoSyncRoute,
   PSlugRoute: PSlugRoute,

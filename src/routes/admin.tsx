@@ -111,6 +111,27 @@ function AdminPage() {
 
   const currentUser = store.currentUser;
 
+  // All customer orders across every user (admin global view).
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [loadingAllOrders, setLoadingAllOrders] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    async function load() {
+      setLoadingAllOrders(true);
+      try {
+        const fetched = await store.fetchAllOrders();
+        if (alive) setAllOrders(fetched);
+      } finally {
+        if (alive) setLoadingAllOrders(false);
+      }
+    }
+    load();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // --- ADMIN-ONLY GUARD ---
   if (!currentUser || currentUser.role !== "admin") {
     return (
@@ -145,7 +166,7 @@ function AdminPage() {
     );
   }
 
-  const orders = store.orders;
+  const orders = loadingAllOrders ? store.orders : (allOrders.length ? allOrders : store.orders);
   const coupons = store.coupons;
 
   // Key metrics
@@ -159,7 +180,7 @@ function AdminPage() {
   ).length;
   const returnsCount = orders.filter((o) => o.returnRequest).length;
 
-  function handleDispatchEvent(e: React.FormEvent) {
+  async function handleDispatchEvent(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedOrderForDispatch) return;
 
@@ -169,16 +190,27 @@ function AdminPage() {
       if (riderName) description += ` • Rider: ${riderName}${riderPhone ? ` (${riderPhone})` : ""}`;
     }
 
-    store.updateOrderStatus(
-      selectedOrderForDispatch.id,
-      newStatus,
-      newLocation,
+    const result = await store.adminUpdateOrderStatus({
+      orderId: selectedOrderForDispatch.id,
+      status: newStatus,
+      location: newLocation,
       description,
-    );
+      riderName,
+      riderPhone,
+    });
+
+    if (!result.ok) {
+      toast.error(result.error || "Failed to update order status");
+      return;
+    }
 
     if (newStatus === "delivered") {
       toast.success(
         `🎉 Order #${selectedOrderForDispatch.id} marked as DELIVERED. Customer dashboard updated.`,
+      );
+    } else if (newStatus === "out_for_delivery") {
+      toast.success(
+        `🚚 Order #${selectedOrderForDispatch.id} is now OUT FOR DELIVERY. Customer tracking updated.`,
       );
     } else {
       toast.success(`Shipment milestone dispatched for Order #${selectedOrderForDispatch.id}!`);
@@ -558,10 +590,19 @@ function AdminPage() {
                       <div className="flex items-center gap-2">
                         <select
                           value={o.status}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const stat = e.target.value as Order["status"];
-                            store.updateOrderStatus(o.id, stat);
-                            toast.success(`Order #${o.id} status updated to ${stat}`);
+                            const result = await store.adminUpdateOrderStatus({
+                              orderId: o.id,
+                              status: stat,
+                              location: o.shipment.currentLocation,
+                              description: `Admin updated order status to ${stat.replace("_", " ")}.`,
+                            });
+                            if (result.ok) {
+                              toast.success(`Order #${o.id} status updated to ${stat}`);
+                            } else {
+                              toast.error(result.error || "Failed to update order status");
+                            }
                           }}
                           className="rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-bold outline-none uppercase"
                         >

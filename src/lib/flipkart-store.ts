@@ -823,6 +823,42 @@ export class StoreManager {
     this.notify();
   }
 
+  // --- ADMIN: GLOBAL ORDER MANAGEMENT ---
+  // Fetch every customer order across all users (admin-only).
+  async fetchAllOrders(): Promise<Order[]> {
+    try {
+      const res = await fetch("/api/admin-orders", { method: "GET" });
+      const data = await res.json();
+      if (data.ok) return (data.orders || []) as Order[];
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  // Admin updates any customer's order status and broadcasts a tracking checkpoint.
+  // Persists to that customer's MongoDB document so the customer sees it on their tracking panel.
+  async adminUpdateOrderStatus(params: {
+    orderId: string;
+    status: Order["status"];
+    location?: string;
+    description?: string;
+    riderName?: string;
+    riderPhone?: string;
+  }): Promise<{ ok: boolean; error?: string }> {
+    try {
+      const res = await fetch("/api/admin-orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      const data = await res.json();
+      return { ok: data.ok === true, error: data.error };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Update failed" };
+    }
+  }
+
   approveReturn(orderId: string) {
     const order = this.orders.find((o) => o.id === orderId);
     if (!order || !order.returnRequest) return;
