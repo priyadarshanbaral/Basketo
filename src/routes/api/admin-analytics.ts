@@ -1,35 +1,34 @@
-// Server API: aggregates REAL business analytics from MongoDB for the admin
-// panel — revenue, profit, products sold, per-product breakdown, customers.
-// No demo/mock numbers: everything is computed from live orders in the DB.
+// Server API: aggregates REAL business analytics from Supabase for the admin panel.
+// Revenue, profit, products sold, per-product breakdown, customers.
 import { createFileRoute } from "@tanstack/react-router";
-import { collections, getMongoDb } from "@/integrations/mongodb/client";
+import { getDb } from "@/integrations/supabase/db";
 import type { Order } from "@/lib/flipkart-store";
 
-// Assumed margin % used to derive profit from revenue when cost price is not
-// tracked per-product. Adjust here if you store real cost prices later.
 const ASSUMED_MARGIN = 0.18;
 
 export const Route = createFileRoute("/api/admin-analytics")({
   server: {
     handlers: {
       GET: async () => {
-        await getMongoDb();
-        const c = collections();
+        const { supabaseAdmin } = await getDb();
 
         const [userDataDocs, legacyUserDocs, registeredUsers] = await Promise.all([
-          (await c.userData()).find({}).toArray(),
-          (await c.users()).find({}).toArray(),
-          (await c.registeredUsers()).find({}).toArray(),
+          supabaseAdmin.from("user_store_data").select("*"),
+          supabaseAdmin.from("users").select("*"),
+          supabaseAdmin.from("registered_users").select("*"),
         ]);
+
         const docs = [
-          ...userDataDocs,
-          ...legacyUserDocs.filter((doc) => /^data_/.test(String(doc._id))),
+          ...((userDataDocs.data ?? []) as Record<string, unknown>[]),
+          ...((legacyUserDocs.data ?? []) as Record<string, unknown>[]).filter((doc) =>
+            /^data_/.test(String(doc.id)),
+          ),
         ];
         const accounts = [
-          ...legacyUserDocs.filter(
-            (doc) => !/^data_/.test(String(doc._id)) && typeof doc.id === "string",
+          ...((legacyUserDocs.data ?? []) as Record<string, unknown>[]).filter(
+            (doc) => !/^data_/.test(String(doc.id)) && typeof doc.id === "string",
           ),
-          ...registeredUsers,
+          ...((registeredUsers.data ?? []) as Record<string, unknown>[]),
         ];
 
         const allOrders: Order[] = [];
@@ -47,7 +46,7 @@ export const Route = createFileRoute("/api/admin-analytics")({
         >();
 
         for (const doc of docs) {
-          const orders: Order[] = Array.isArray(doc?.orders) ? doc.orders : [];
+          const orders: Order[] = Array.isArray(doc?.orders) ? (doc.orders as Order[]) : [];
           for (const o of orders) {
             if (!o || !o.id) continue;
             allOrders.push(o);
@@ -91,7 +90,6 @@ export const Route = createFileRoute("/api/admin-analytics")({
             productMap.set(key, p);
           }
 
-          // Customer roll-up
           const ck = o.customerEmail || o.userId;
           const cust = customersMap.get(ck) || {
             id: o.userId,

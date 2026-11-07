@@ -1,32 +1,31 @@
 // Server API: Admin order management — full visibility into every customer order
 // and the ability to update order status / broadcast tracking checkpoints.
-// Orders live in the `user_data` collection as namespaced documents `data_${userId}`.
+// Orders live in the `user_store_data` table as per-user documents `data_${userId}`.
 // This endpoint aggregates orders across all users so the admin can control fulfillment.
 import { createFileRoute } from "@tanstack/react-router";
-import { collections, getMongoDb } from "@/integrations/mongodb/client";
+import { findDocuments, findOneDocument, getDb, upsertDocument } from "@/integrations/supabase/db";
 import type { Order } from "@/lib/flipkart-store";
 
 export const Route = createFileRoute("/api/admin-orders")({
   server: {
     handlers: {
       GET: async () => {
-        const c = await collections();
-        const userData = await (await c).userData();
-
-        // Load every namespaced user document and collect its orders.
-        const docs = (await userData.find({}).toArray()) || [];
+        const { supabaseAdmin } = await getDb();
+        const { data: docs, error } = await supabaseAdmin
+          .from("user_store_data")
+          .select("*");
+        if (error) throw error;
 
         const allOrders: Array<Order & { userId: string }> = [];
-        for (const doc of docs) {
-          const _id: string = doc._id || "";
+        for (const doc of (docs ?? []) as Record<string, unknown>[]) {
+          const _id: string = (doc.id as string) || "";
           const userId = _id.startsWith("data_") ? _id.slice("data_".length) : _id;
-          const orders: Order[] = (doc as any).orders || [];
+          const orders: Order[] = Array.isArray(doc.orders) ? (doc.orders as Order[]) : [];
           for (const o of orders) {
             allOrders.push({ ...o, userId });
           }
         }
 
-        // Newest first.
         allOrders.sort(
           (a, b) =>
             new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
@@ -50,19 +49,18 @@ export const Route = createFileRoute("/api/admin-orders")({
           return Response.json({ ok: false, error: "orderId and status are required" }, { status: 400 });
         }
 
-        const c = await collections();
-        const userData = await (await c).userData();
+        const { supabaseAdmin } = await getDb();
+        const { data: docs, error } = await supabaseAdmin.from("user_store_data").select("*");
+        if (error) throw error;
 
-        // Find which user document contains this order.
-        const docs = (await userData.find({}).toArray()) || [];
-        let targetDoc: any = null;
+        let targetDoc: Record<string, unknown> | null = null;
         let targetUserId = "";
 
-        for (const doc of docs) {
-          const orders: any[] = (doc as any).orders || [];
-          if (orders.some((o) => o.id === orderId)) {
+        for (const doc of (docs ?? []) as Record<string, unknown>[]) {
+          const orders: unknown[] = Array.isArray(doc.orders) ? (doc.orders as unknown[]) : [];
+          if (orders.some((o) => (o as Record<string, unknown>)?.id === orderId)) {
             targetDoc = doc;
-            targetUserId = (doc._id as string).replace(/^data_/, "");
+            targetUserId = ((doc.id as string) || "").replace(/^data_/, "");
             break;
           }
         }
@@ -71,29 +69,28 @@ export const Route = createFileRoute("/api/admin-orders")({
           return Response.json({ ok: false, error: "Order not found" }, { status: 404 });
         }
 
-        const orders: any[] = (targetDoc as any).orders || [];
-        const orderIdx = orders.findIndex((o) => o.id === orderId);
+        const orders: unknown[] = Array.isArray(targetDoc.orders) ? (targetDoc.orders as unknown[]) : [];
+        const orderIdx = orders.findIndex((o) => (o as Record<string, unknown>)?.id === orderId);
         if (orderIdx === -1) {
           return Response.json({ ok: false, error: "Order not found" }, { status: 404 });
         }
 
-        const order = orders[orderIdx];
+        const order = orders[orderIdx] as Record<string, unknown>;
         const prevStatus = order.status;
 
-        // Update order status.
         order.status = status;
 
-        // Update shipping address with rider details when out for delivery.
         if (status === "out_for_delivery") {
-          if (riderName) order.shipment = { ...order.shipment, riderName } as any;
-          if (riderPhone) order.shipment = { ...order.shipment, riderPhone } as any;
+          const shipment = (order.shipment as Record<string, unknown>) || {};
+          if (riderName) shipment.riderName = riderName;
+          if (riderPhone) shipment.riderPhone = riderPhone;
+          order.shipment = shipment;
         }
 
-        // Append a tracking checkpoint event.
         const event = {
           id: `evt-${Date.now()}`,
           status: status.toUpperCase(),
-          location: location || order.shipment?.currentLocation || "Basketo Hub",
+          location: location || (order.shipment as Record<string, unknown>)?.currentLocation || "Basketo Hub",
           description:
             description ||
             (status === "out_for_delivery"
@@ -104,21 +101,28 @@ export const Route = createFileRoute("/api/admin-orders")({
           timestamp: new Date().toLocaleString("en-IN"),
           completed: status === "delivered",
         };
-        order.shipment.events = order.shipment.events || [];
-        order.shipment.events.push(event);
+        const shipment = (order.shipment as Record<string, unknown>) || {};
+        shipment.events = (shipment.events as unknown[]) || [];
+        shipment.events.push(event);
+        order.shipment = shipment;
 
-        // If delivered, mark completion fields.
         if (status === "delivered") {
-          order.shipment.estimatedDeliveryDate = new Date().toISOString().slice(0, 10);
+          order.shipment = {
+            ...(order.shipment as Record<string, unknown>),
+            estimatedDeliveryDate: new Date().toISOString().slice(0, 10),
+          };
           order.canCancel = false;
           order.canReturn = true;
         }
 
-        // Persist back to the user's namespaced document.
-        await userData.replaceOne(
-          { _id: targetDoc._id },
-          { ...targetDoc, orders, updatedAt: new Date().toISOString() },
-        );
+        const updatedOrders = [...orders];
+        updatedOrders[orderIdx] = order;
+
+        await upsertDocument("user_store_data", {
+          ...targetDoc,
+          orders: updatedOrders,
+          updated_at: new Date().toISOString(),
+        });
 
         return Response.json({
           ok: true,

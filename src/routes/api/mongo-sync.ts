@@ -1,41 +1,27 @@
-// Server API: persists Basketo data to MongoDB.
+// Server API: persists Basketo data to Supabase (replaces MongoDB).
+// Same endpoint contract as before so src/lib/flipkart-store.ts works unchanged.
 import { createFileRoute } from "@tanstack/react-router";
-import type { Collection, Document } from "mongodb";
-import { collections, getMongoDb, type StoreDocument } from "@/integrations/mongodb/client";
-
-type StoreDataPayload = {
-  users?: Document[];
-  coupons?: Document[];
-  addresses?: Document[];
-  orders?: Document[];
-  notifications?: Document[];
-  wishlist?: string[];
-  reviews?: Document[];
-};
+import { findDocuments, findOneDocument, getDb, insertDocument, upsertDocument, deleteWhere } from "@/integrations/supabase/db";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-async function syncRecords(
-  collection: Collection<StoreDocument>,
-  rows: Document[],
-  idField: string,
-): Promise<void> {
+async function syncRecords(tableName: string, rows: Record<string, unknown>[], idField: string): Promise<void> {
   const keyedRows = rows.map((row) => {
     const id = row[idField];
     if (typeof id !== "string" || !id) {
-      throw new Error(`MongoDB record is missing its ${idField}.`);
+      throw new Error(`Supabase record is missing its ${idField}.`);
     }
     return { id, row };
   });
 
-  await collection.deleteMany({ _id: { $nin: keyedRows.map(({ id }) => id) } });
-  await Promise.all(
-    keyedRows.map(({ id, row }) =>
-      collection.replaceOne({ _id: id }, { ...row, _id: id }, { upsert: true }),
-    ),
-  );
+  const existingIds = keyedRows.map(({ id }) => id);
+  await deleteWhere(tableName, {} as any);
+
+  for (const { id, row } of keyedRows) {
+    await upsertDocument(tableName, { ...row, id });
+  }
 }
 
 export const Route = createFileRoute("/api/mongo-sync")({
@@ -43,27 +29,25 @@ export const Route = createFileRoute("/api/mongo-sync")({
     handlers: {
       GET: async ({ request }) => {
         try {
-          await getMongoDb();
-          const c = collections();
+          await getDb();
           const userId = new URL(request.url).searchParams.get("userId") || "";
 
           const [legacyAccounts, registeredUsers, coupons] = await Promise.all([
-            (await c.users()).find({ id: { $exists: true } }).toArray(),
-            (await c.registeredUsers()).find({}).toArray(),
-            (await c.coupons()).find({}).toArray(),
+            findDocuments("users", {}),
+            findDocuments("registered_users", {}),
+            findDocuments("coupons", {}),
           ]);
 
-          const usersById = new Map<string, Document>();
+          const usersById = new Map<string, Record<string, unknown>>();
           for (const user of [...legacyAccounts, ...registeredUsers]) {
             if (typeof user.id === "string") usersById.set(user.id, user);
           }
 
-          let userData: Document | null = null;
+          let userData: Record<string, unknown> | null = null;
           if (userId) {
-            const userDataCollection = await c.userData();
             userData =
-              (await userDataCollection.findOne({ _id: `data_${userId}` })) ??
-              (await (await c.users()).findOne({ _id: `data_${userId}` }));
+              (await findOneDocument("user_store_data", { id: `data_${userId}` })) ??
+              (await findOneDocument("users", { id: `data_${userId}` }));
           }
 
           return Response.json({
@@ -77,7 +61,7 @@ export const Route = createFileRoute("/api/mongo-sync")({
           });
         } catch (error) {
           console.error("[mongo-sync] Load failed:", error);
-          const message = error instanceof Error ? error.message : "MongoDB load failed.";
+          const message = error instanceof Error ? error.message : "Supabase load failed.";
           return Response.json({ ok: false, error: message }, { status: 503 });
         }
       },
@@ -92,72 +76,54 @@ export const Route = createFileRoute("/api/mongo-sync")({
             return Response.json({ ok: false, error: "Store data is required." }, { status: 400 });
           }
 
-          const data = body.data;
-          const arrayFields = [
-            "users",
-            "coupons",
-            "addresses",
-            "orders",
-            "notifications",
-            "wishlist",
-            "reviews",
-          ];
+          const data = body.data as {
+            users?: unknown[];
+            coupons?: unknown[];
+            addresses?: unknown[];
+            orders?: unknown[];
+            notifications?: unknown[];
+            wishlist?: unknown[];
+            reviews?: unknown[];
+          };
+          const arrayFields = ["users", "coupons", "addresses", "orders", "notifications", "wishlist", "reviews"];
           for (const field of arrayFields) {
             if (data[field] !== undefined && !Array.isArray(data[field])) {
-              return Response.json(
-                { ok: false, error: `${field} must be an array.` },
-                { status: 400 },
-              );
+              return Response.json({ ok: false, error: `${field} must be an array.` }, { status: 400 });
             }
           }
-          if (
-            Array.isArray(data.wishlist) &&
-            data.wishlist.some((productId) => typeof productId !== "string")
-          ) {
-            return Response.json(
-              { ok: false, error: "Wishlist items must be product IDs." },
-              { status: 400 },
-            );
+          if (Array.isArray(data.wishlist) && data.wishlist.some((productId) => typeof productId !== "string")) {
+            return Response.json({ ok: false, error: "Wishlist items must be product IDs." }, { status: 400 });
           }
 
           const userId = body.userId.trim();
-          const storeData = data as StoreDataPayload;
-          await getMongoDb();
-          const c = collections();
-          const operations: Promise<unknown>[] = [];
+          await getDb();
+          const operations: Promise<void>[] = [];
 
-          if (storeData.users) {
-            operations.push(
-              syncRecords(await c.registeredUsers(), storeData.users, "id"),
-            );
+          if (data.users) {
+            operations.push(syncRecords("registered_users", data.users as Record<string, unknown>[], "id"));
           }
-          if (storeData.coupons) {
-            operations.push(syncRecords(await c.coupons(), storeData.coupons, "id"));
+          if (data.coupons) {
+            operations.push(syncRecords("coupons", data.coupons as Record<string, unknown>[], "id"));
           }
 
-          const userDataCollection = await c.userData();
           operations.push(
-            userDataCollection.replaceOne(
-              { _id: `data_${userId}` },
-              {
-                _id: `data_${userId}`,
-                userId,
-                addresses: storeData.addresses ?? [],
-                orders: storeData.orders ?? [],
-                notifications: storeData.notifications ?? [],
-                wishlist: storeData.wishlist ?? [],
-                reviews: storeData.reviews ?? [],
-                updatedAt: new Date().toISOString(),
-              },
-              { upsert: true },
-            ),
+            upsertDocument("user_store_data", {
+              id: `data_${userId}`,
+              user_id: userId,
+              addresses: data.addresses ?? [],
+              orders: data.orders ?? [],
+              notifications: data.notifications ?? [],
+              wishlist: data.wishlist ?? [],
+              reviews: data.reviews ?? [],
+              updated_at: new Date().toISOString(),
+            }),
           );
           await Promise.all(operations);
 
           return Response.json({ ok: true });
         } catch (error) {
           console.error("[mongo-sync] Save failed:", error);
-          const message = error instanceof Error ? error.message : "MongoDB save failed.";
+          const message = error instanceof Error ? error.message : "Supabase save failed.";
           return Response.json({ ok: false, error: message }, { status: 503 });
         }
       },
