@@ -117,10 +117,10 @@ export function AiAssistant() {
               )}
             </div>
 
-            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 bk-ai-scrollbar">
               {messages.length === 0 && (
                 <div className="space-y-3 py-6 text-center">
-                  <Sparkles className="mx-auto h-8 w-8 text-emerald-600" />
+                  <Sparkles className="mx-auto h-8 w-8 text-emerald-600 bk-ai-welcome-icon" />
                   <p className="text-sm text-muted-foreground">
                     Hi! I&apos;m your Basketo concierge — ask me about products, prices, delivery,
                     refunds, your account, or anything about the project.
@@ -135,7 +135,7 @@ export function AiAssistant() {
                       <button
                         key={s}
                         onClick={() => sendMessage({ text: s })}
-                        className="rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-medium text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100"
+                        className="bk-ai-suggestion-chip rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1 text-xs font-medium text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100"
                       >
                         {s}
                       </button>
@@ -155,8 +155,8 @@ export function AiAssistant() {
                     <div
                       className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
                         m.role === "user"
-                          ? "bg-linear-to-br from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-900/10"
-                            : "border border-slate-100 bg-slate-50 text-foreground shadow-sm"
+                          ? "bk-ai-message-user shadow-md shadow-emerald-900/10"
+                            : "bk-ai-message-assistant border border-slate-100 bg-slate-50 text-foreground shadow-sm"
                       }`}
                     >
                       {tools.length > 0 && m.role !== "user" && (
@@ -173,7 +173,7 @@ export function AiAssistant() {
               })}
 
               {(error || requestError) && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-900" role="alert">
+                <div className="rounded-2xl bk-ai-error-banner p-3 text-xs" role="alert">
                   <p className="font-bold">The assistant could not respond.</p>
                   <p className="mt-1 break-words">{requestError || error?.message}</p>
                   <p className="mt-1 text-rose-800">
@@ -185,7 +185,7 @@ export function AiAssistant() {
                       clearError();
                       setRequestError(null);
                     }}
-                    className="mt-2 font-bold underline"
+                    className="bk-ai-dismiss-btn mt-2"
                   >
                     Dismiss
                   </button>
@@ -194,12 +194,10 @@ export function AiAssistant() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl bg-muted px-3 py-2 text-sm">
-                    <span className="inline-flex gap-1">
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.3s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.15s]" />
-                      <span className="h-2 w-2 animate-bounce rounded-full bg-primary" />
-                    </span>
+                  <div className="rounded-2xl bg-muted px-3 py-2 text-sm bk-ai-typing-indicator">
+                    <span className="bk-ai-typing-dot" />
+                    <span className="bk-ai-typing-dot" />
+                    <span className="bk-ai-typing-dot" />
                   </div>
                 </div>
               )}

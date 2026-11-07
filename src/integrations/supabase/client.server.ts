@@ -34,6 +34,18 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 
 function createMockSupabaseAdminClient(): any {
   console.warn("[AI Studio] Supabase Admin credentials not set — using mock admin client");
+  function makeChain(): any {
+    const chain: any = {
+      eq: () => chain,
+      neq: () => chain,
+      limit: () => chain,
+      order: () => chain,
+      single: async () => ({ data: null, error: null }),
+      maybeSingle: async () => ({ data: null, error: null }),
+      then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+    };
+    return chain;
+  }
   return {
     auth: {
       admin: {
@@ -44,22 +56,24 @@ function createMockSupabaseAdminClient(): any {
       getUser: async () => ({ data: { user: null }, error: null }),
       getClaims: async () => ({ data: { claims: null }, error: null }),
     },
-    from: () => ({
-      select: () => {
-        const chain: any = {
-          eq: () => chain,
-          neq: () => chain,
-          single: async () => ({ data: null, error: null }),
-          maybeSingle: async () => ({ data: null, error: null }),
-          then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
-        };
-        return chain;
-      },
-      insert: async () => ({ data: null, error: null }),
-      update: async () => ({ data: null, error: null }),
-      delete: async () => ({ data: null, error: null }),
-      upsert: async () => ({ data: null, error: null }),
-    }),
+    from: () => {
+      const chain: any = {
+        eq: () => chain,
+        neq: () => chain,
+        limit: () => chain,
+        order: () => chain,
+        single: async () => ({ data: null, error: null }),
+        maybeSingle: async () => ({ data: null, error: null }),
+        then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+      };
+      return {
+        select: () => chain,
+        insert: async () => ({ data: null, error: null }),
+        update: async () => ({ data: null, error: null }),
+        delete: () => chain,
+        upsert: async () => ({ data: null, error: null }),
+      };
+    },
   };
 }
 

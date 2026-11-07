@@ -27,7 +27,7 @@ function table(name: string) {
 }
 
 async function requireAdmin() {
-  const { data: _ping, error } = await supabaseAdmin.from(TABLES.registeredUsers).select("id").limit(1);
+  const { data: _ping, error } = await supabaseAdmin.from(TABLES.registeredUsers).select("id");
   if (error) throw new Error(`Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Details: ${error.message}`);
 }
 

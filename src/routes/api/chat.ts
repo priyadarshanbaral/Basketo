@@ -51,6 +51,79 @@ function compactCurated(product: (typeof CURATED_BASKETO_PRODUCTS)[number]) {
   };
 }
 
+function formatInr(price: number): string {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(price);
+}
+
+function localFallbackResponse(userText: string): string {
+  const q = userText.toLowerCase();
+
+  const greetings = ["hi", "hello", "hey", "namaste", "good morning", "good evening"];
+  if (greetings.some((g) => q.includes(g))) {
+    return `Hi! I'm your Basketo concierge. I'm running in local mode (no AI API key configured). I can help you explore products and answer questions about the Basketo project. Try asking:
+
+• "Show me groceries under ₹500"
+• "What categories do you have?"
+• "Tell me about the Basketo tech stack"
+• "How does the shopping cart work?"`;
+
+  }
+
+  if (q.includes("grocery") || q.includes("groceries") || q.includes("food")) {
+    const groceryItems = CURATED_BASKETO_PRODUCTS.filter((p) =>
+      (p.category_id || "").toLowerCase().includes("grocery") ||
+      p.name.toLowerCase().includes("grocery") ||
+      p.name.toLowerCase().includes("mango") ||
+      p.name.toLowerCase().includes("apple") ||
+      p.name.toLowerCase().includes("milk") ||
+      p.name.toLowerCase().includes("bread")
+    );
+    if (groceryItems.length > 0) {
+      const list = groceryItems
+        .slice(0, 5)
+        .map((p) => `• ${p.name} — ${formatInr(p.price)}`)
+        .join("\n");
+      return `Here are some Basketo grocery items:\n\n${list}\n\nSet GEMINI_API_KEY or LOVABLE_API_KEY in .env for full AI-powered search.`;
+    }
+    return "Basketo carries groceries in the grocery category. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env for full AI-powered product search and recommendations.";
+  }
+
+  if (q.includes("category") || q.includes("categories")) {
+    const cats = new Set(CURATED_BASKETO_PRODUCTS.map((p) => p.category_id).filter(Boolean));
+    return `Available Basketo categories: ${[...cats].join(", ")}. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env for full AI-powered category browsing.`;
+  }
+
+  if (q.includes("stack") || q.includes("tech") || q.includes("framework") || q.includes("project")) {
+    return `Basketo is built with React 19, TypeScript, TanStack Start and TanStack Router, Vite, Tailwind CSS v4, Framer Motion, Radix UI, lucide-react, and the Vercel AI SDK. It fetches products from the DummyJSON API and uses Supabase for data persistence. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env to enable the AI assistant.`;
+  }
+
+  if (q.includes("cart") || q.includes("checkout") || q.includes("buy")) {
+    return "Basketo's shopping cart persists in your browser's localStorage and syncs to Supabase when you're signed in. Checkout offers Cash on Delivery (COD) and Razorpay options. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env for AI shopping help.";
+  }
+
+  if (q.includes("price") || q.includes("₹") || q.includes("inr") || q.includes("rupee")) {
+    return "Basketo displays prices in Indian Rupees (₹). External catalog prices from DummyJSON are converted from USD to INR. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env for AI price lookups and comparisons.";
+  }
+
+  if (q.includes("supabase") || q.includes("database") || q.includes("mongo")) {
+    return "Basketo now uses Supabase for server-side data persistence (accounts, orders, addresses, wishlist). Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_PUBLISHABLE_KEY in .env. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env to enable the AI assistant.";
+  }
+
+  if (q.includes("dummyjson") || q.includes("external") || q.includes("catalog")) {
+    return "Product data comes from the DummyJSON API (https://dummyjson.com) plus a curated Basketo product set. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env for AI-powered catalog search.";
+  }
+
+  if (q.includes("auth") || q.includes("login") || q.includes("signup") || q.includes("register")) {
+    return "Basketo has sign-in and registration flows. Accounts are stored in Supabase. Set GEMINI_API_KEY or LOVABLE_API_KEY in .env to ask the assistant about auth flows.";
+  }
+
+  return `I'm Basketo Assistant running in local mode. I can answer basic questions about products, categories, prices, the cart, and the Basketo project. 
+
+To enable full AI-powered conversations (product search, recommendations, detailed project guidance), set GEMINI_API_KEY or LOVABLE_API_KEY in your .env file and restart the server.
+
+Try asking: "What grocery items do you have?" or "Tell me about the Basketo tech stack."`;
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -59,7 +132,43 @@ export const Route = createFileRoute("/api/chat")({
         if (!Array.isArray(body.messages)) {
           return new Response("Messages required", { status: 400 });
         }
-        const { model, hasKey } = createAiGatewayProvider();
+        const { model, hasKey, local } = createAiGatewayProvider();
+
+        if (local) {
+          const lastUser = body.messages
+            .slice()
+            .reverse()
+            .find((m) => m.role === "user");
+          const userText = lastUser
+            ? lastUser.parts
+                .filter((p) => p.type === "text")
+                .map((p) => p.text)
+                .join("")
+            : "";
+          const reply = localFallbackResponse(userText || "");
+          const encoder = new TextEncoder();
+          const textId = "local-0";
+          const stream = new ReadableStream({
+            start(controller) {
+              const send = (chunk: Record<string, unknown>) => {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              };
+              send({ type: "start" });
+              send({ type: "start-step" });
+              send({ type: "text-start", id: textId });
+              send({ type: "text-delta", id: textId, delta: reply });
+              send({ type: "text-end", id: textId });
+              send({ type: "finish-step" });
+              send({ type: "finish" });
+              controller.close();
+            },
+          });
+          return new Response(stream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          });
+        }
+
         if (!hasKey || !model) {
           return new Response(
             JSON.stringify({
@@ -79,7 +188,7 @@ export const Route = createFileRoute("/api/chat")({
 - **Stack**: React 19, TypeScript, TanStack Start and Router, TanStack Query, Vite, Tailwind CSS v4, Framer Motion, Radix-based UI components, lucide-react, and the Vercel AI SDK.
 - **Routes**: \`/\` is the storefront; \`/shop\` lists and filters products; \`/product/$slug\` shows product details; \`/cart\` manages the cart and checkout flow; \`/auth\` provides sign-in and registration; \`/account\` contains account, order, address, wishlist, and profile areas; \`/orders\` redirects to the account orders area; \`/admin\` is the admin dashboard; \`/p/$slug\` displays content pages; \`/api/chat\` streams assistant responses.
 - **Catalog**: \`src/lib/products.functions.ts\` serves curated Basketo products and fetches additional catalog products and categories from DummyJSON. Prices from DummyJSON are converted from USD to INR. Catalog tools can search products, list categories, and retrieve product details; these are catalog lookups, not semantic/vector search.
-- **Cart and account data**: the cart is managed client-side in \`src/lib/cart-store.ts\`. Store account data and records are synchronized through \`/api/mongo-sync\` to MongoDB collections including \`registered_users\` and \`user_data\`; the sync client is in \`src/integrations/mongodb/client.ts\`. Do not describe MongoDB as analytics-only.
+- **Cart and account data**: the cart is managed client-side in \`src/lib/cart-store.ts\`. Store account data and records are synchronized through \`/api/mongo-sync\` to Supabase tables including \`registered_users\` and \`user_store_data\`; the sync client is in \`src/integrations/supabase/db.ts\`.
 - **Authentication and integrations**: authentication screens and flows are in \`src/routes/auth.tsx\`; do not claim Supabase handles every sign-in flow. Supabase is an optional integration used by some hosted content/auth features. Never claim authentication, payment, or external services are production-secure or fully configured unless the user provides evidence.
 - **Checkout**: the cart UI offers Razorpay and cash-on-delivery choices. Do not claim that a real payment was processed or that a payment gateway is configured; explain the visible flow without guessing about external credentials or settlement.
 - **AI configuration**: chat is served by \`src/routes/api/chat.ts\` using Gemini through either \`GEMINI_API_KEY\` or \`LOVABLE_API_KEY\`. These keys must be set server-side in \`.env\`; never request that a user paste a secret into chat.

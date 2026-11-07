@@ -12,8 +12,9 @@ export function createAiGatewayProvider() {
         name: "google-gemini",
         baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
         apiKey: geminiKey,
-      })("gemini-2.5-flash"),
+      })("gemini-3.8-flash"),
       hasKey: true,
+      local: false,
     };
   }
 
@@ -25,12 +26,14 @@ export function createAiGatewayProvider() {
         apiKey: lovableKey,
       })("google/gemini-2.5-flash"),
       hasKey: true,
+      local: false,
     };
   }
 
   return {
     model: null,
     hasKey: false,
+    local: true,
   };
 }
 
