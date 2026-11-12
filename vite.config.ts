@@ -9,7 +9,8 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   tanstackStart: {},
   nitro: {
-    preset: "node-server",
+    // Build for Netlify (serverless SSR function) when running on Netlify; Node server elsewhere.
+    preset: process.env.NETLIFY ? "netlify" : "node-server",
   },
   vite: {
     server: {
